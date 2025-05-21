@@ -430,9 +430,14 @@ namespace
 }  // namespace
 
 ucp_worker *
-nixlUcxWorker::createUcpWorker(const nixlUcxContext &ctx) {
+nixlUcxWorker::createUcpWorker(const nixlUcxContext &ctx, bool is_shared) {
     ucp_worker* worker = nullptr;
-    const nixlUcpWorkerParams params(ctx.mt_type);
+    nixl_ucx_mt_t mt_type = ctx.mt_type;
+    if (is_shared) {
+        mt_type = nixl_ucx_mt_t::WORKER;
+    }
+
+    const nixlUcpWorkerParams params(mt_type);
     const ucs_status_t status = ucp_worker_create(ctx.ctx, &params, &worker);
     if(status != UCS_OK) {
         const auto err_str = std::string("Failed to create UCX worker: ") +
@@ -443,8 +448,8 @@ nixlUcxWorker::createUcpWorker(const nixlUcxContext &ctx) {
     return worker;
 }
 
-nixlUcxWorker::nixlUcxWorker(const nixlUcxContext &ctx, ucp_err_handling_mode_t err_handling_mode)
-    : worker(createUcpWorker(ctx), &ucp_worker_destroy),
+nixlUcxWorker::nixlUcxWorker(const nixlUcxContext &ctx, ucp_err_handling_mode_t err_handling_mode, bool is_shared)
+    : worker(createUcpWorker(ctx, is_shared), &ucp_worker_destroy),
       err_handling_mode_(err_handling_mode) {}
 
 std::string nixlUcxWorker::epAddr()

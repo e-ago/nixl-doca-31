@@ -174,8 +174,8 @@ class nixlUcxWorker {
 public:
     explicit nixlUcxWorker(
         const nixlUcxContext &,
-        ucp_err_handling_mode_t ucp_err_handling_mode = UCP_ERR_HANDLING_MODE_NONE);
-
+        ucp_err_handling_mode_t ucp_err_handling_mode = UCP_ERR_HANDLING_MODE_NONE,
+        bool is_shared = false);
     nixlUcxWorker( nixlUcxWorker&& ) = delete;
     nixlUcxWorker( const nixlUcxWorker& ) = delete;
     void operator=( nixlUcxWorker&& ) = delete;
@@ -203,18 +203,17 @@ public:
 
 private:
     [[nodiscard]] static ucp_worker *
-    createUcpWorker(const nixlUcxContext &);
+    createUcpWorker(const nixlUcxContext &, bool);
 
     const std::unique_ptr<ucp_worker, void (*)(ucp_worker *)> worker;
     ucp_err_handling_mode_t err_handling_mode_;
 };
 
 [[nodiscard]] static inline nixl_b_params_t get_ucx_backend_common_options() {
-    return {
-        { "ucx_devices", "" },
-        { "ucx_error_handling_mode", "none" }, // or "peer"
-        { "num_workers", "1" }
-    };
+    return {{"ucx_devices", ""},
+            {"ucx_error_handling_mode", "none"}, // or "peer"
+            {"num_workers", "0"},
+            {"num_shared_workers", "1"}};
 }
 
 nixl_status_t ucx_status_to_nixl(ucs_status_t status);
