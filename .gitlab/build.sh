@@ -36,6 +36,10 @@ apt-get -qq update
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.86.0
 export PATH=$HOME/.cargo/bin:$PATH
 
+ls -la $HOME/.cargo/bin
+
+which cargo
+
 apt-get -qq install -y curl \
                              libnuma-dev \
                              numactl \
