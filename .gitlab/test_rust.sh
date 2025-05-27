@@ -25,7 +25,6 @@ if [ -z "$INSTALL_DIR" ]; then
     exit 1
 fi
 
-rustc --version
 cargo --version
 
 export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/x86_64-linux-gnu:${INSTALL_DIR}/lib/x86_64-linux-gnu/plugins:/usr/local/lib:${INSTALL_DIR}/lib64:$LD_LIBRARY_PATH
