@@ -1667,6 +1667,7 @@ nixl_status_t nixlDocaEngine::genNotif(const std::string &remote_agent, const st
 	if (qpMap.find(remote_agent) == qpMap.end()) {
 		std::cout << "Can't find remote_agent " << remote_agent << "\n";
 		return NIXL_ERR_INVALID_PARAM;
+	}
 
 	notif = notifMap[remote_agent];
 
