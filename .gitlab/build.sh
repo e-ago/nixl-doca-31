@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+# set -e
 set -x
 
 # Parse commandline arguments with first argument being the install directory
 # and second argument being the UCX installation directory.
-INSTALL_DIR=$1
-UCX_INSTALL_DIR=$2
+export INSTALL_DIR=$1
+export UCX_INSTALL_DIR=$2
 
 if [ -z "$INSTALL_DIR" ]; then
     echo "Usage: $0 <install_dir> <ucx_install_dir>"
@@ -35,10 +35,6 @@ apt-get -qq update
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.86.0
 export PATH=$HOME/.cargo/bin:$PATH
-
-ls -la $HOME/.cargo/bin
-
-which cargo
 
 apt-get -qq install -y curl \
                              libnuma-dev \
