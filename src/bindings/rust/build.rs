@@ -65,30 +65,31 @@ fn get_arch() -> String {
     }
 }
 
-fn get_nixl_libs() ->  Result<Vec<pkg_config::Library>, pkg_config::Error> {
-
-    let nixl_lib = pkg_config::probe_library("nixl").unwrap();
-    let nixl_build_lib = pkg_config::probe_library("nixl_build").unwrap();
-    let nixl_common_lib = pkg_config::probe_library("nixl_common").unwrap();
-    let stream_lib = pkg_config::probe_library("stream").unwrap();
-    let serdes_lib = pkg_config::probe_library("serdes").unwrap();
-    let ucx_utils_lib = pkg_config::probe_library("ucx_utils").unwrap();
-    let etcd_cpp_api_lib = pkg_config::probe_library("etcd-cpp-api").unwrap();
-
-    return Ok(vec![
-        nixl_lib,
-        nixl_build_lib,
-        nixl_common_lib,
-        stream_lib,
-        serdes_lib,
-        ucx_utils_lib,
-        etcd_cpp_api_lib,
-    ]);
+fn get_nixl_libs() -> Option<Vec<pkg_config::Library>> {
+    // Try to get all libraries, but return None if any fails
+    match (
+        pkg_config::probe_library("nixl"),
+        pkg_config::probe_library("nixl_build"),
+        pkg_config::probe_library("nixl_common"),
+        pkg_config::probe_library("stream"),
+        pkg_config::probe_library("serdes"),
+        pkg_config::probe_library("ucx_utils"),
+        pkg_config::probe_library("etcd-cpp-api"),
+    ) {
+        (Ok(nixl), Ok(nixl_build), Ok(nixl_common), Ok(stream), Ok(serdes), Ok(ucx_utils), Ok(etcd)) => {
+            Some(vec![nixl, nixl_build, nixl_common, stream, serdes, ucx_utils, etcd])
+        }
+        _ => None,
+    }
 }
 
 fn main() {
     let nixl_root_path =
         env::var("NIXL_PREFIX").unwrap_or_else(|_| "/opt/nvidia/nvda_nixl".to_string());
+
+    // Print the NIXL_PREFIX for debugging
+    println!("cargo:warning=Using NIXL_PREFIX: {}", nixl_root_path);
+
     let nixl_include_path = format!("{}/include", nixl_root_path);
     let nixl_include_paths = [
         &nixl_include_path,
@@ -101,21 +102,39 @@ fn main() {
     let arch = get_arch();
     let nixl_lib_path = get_lib_path(&nixl_root_path, &arch);
 
+    // Print the library path for debugging
+    println!("cargo:warning=Using library path: {}", nixl_lib_path);
+
+    // Add all possible library paths
+    println!("cargo:rustc-link-search=native={}", nixl_lib_path);
+    println!("cargo:rustc-link-search=native={}/lib", nixl_root_path);
+    println!("cargo:rustc-link-search=native={}/lib64", nixl_root_path);
+    println!("cargo:rustc-link-search=native={}/lib/x86_64-linux-gnu", nixl_root_path);
+
+    // Try to use pkg-config if available
+    if let Some(libs) = get_nixl_libs() {
+        println!("cargo:warning=Using pkg-config paths");
+        for lib in libs {
+            for path in lib.link_paths {
+                println!("cargo:rustc-link-search=native={}", path.display());
+            }
+        }
+    } else {
+        println!("cargo:warning=pkg-config not available, using manual library paths");
+    }
+
     // Check if etcd is enabled via environment variable
     let etcd_enabled = env::var("HAVE_ETCD").map(|v| v != "0").unwrap_or(false);
-
-    println!("cargo:rustc-link-search={}", nixl_lib_path);
 
     // Build the C++ wrapper
     let mut cc_builder = cc::Build::new();
     cc_builder
         .cpp(true)
-        .compiler("g++") // Ensure we're using the C++ compiler
+        .compiler("g++")
         .file("wrapper.cpp")
         .flag("-std=c++17")
         .flag("-fPIC")
         .includes(nixl_include_paths)
-        // Change ABI flag if necessary to match your precompiled libraries:
         .flag("-D_GLIBCXX_USE_CXX17_ABI=1")
         .flag("-Wno-unused-parameter")
         .flag("-Wno-unused-variable")
@@ -172,7 +191,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=HAVE_ETCD");
 
     builder
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(out_path.join("bindings.rs"))

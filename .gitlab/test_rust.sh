@@ -44,5 +44,6 @@ export NIXL_PLUGIN_DIR=${INSTALL_DIR}/lib/x86_64-linux-gnu/plugins
 
 ls -la ${UCX_INSTALL_DIR}
 ls -la ${UCX_INSTALL_DIR}/lib/pkgconfig
+ls -la ${INSTALL_DIR}/lib/x86_64-linux-gnu/pkgconfig
 
 cargo test -- --test-threads=1
