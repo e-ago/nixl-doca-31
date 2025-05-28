@@ -95,8 +95,6 @@ struct nixlDocaNotif {
 	struct doca_mmap *recv_mmap;
 	struct doca_buf_arr *recv_barr;
 	struct doca_gpu_buf_arr *recv_barr_gpu;
-	uint32_t *flag_addr_gpu;
-	uint32_t *flag_addr_cpu;
 };
 
 struct docaXferCompletion {
@@ -108,6 +106,12 @@ struct docaNotifRecv {
 	struct doca_gpu_dev_rdma *rdma_qp;
 	struct doca_gpu_buf_arr *barr_gpu;
 	int num_progress;
+};
+
+struct docaNotifSend {
+	struct doca_gpu_dev_rdma *rdma_qp;
+	struct doca_gpu_buf_arr *barr_gpu;
+	int buf_idx;
 };
 
 class nixlDocaConnection : public nixlBackendConnMD {
@@ -205,6 +209,10 @@ class nixlDocaEngine : public nixlBackendEngine {
 		struct docaNotifRecv *notif_fill_cpu;
 		struct docaNotifRecv *notif_progress_gpu;
 		struct docaNotifRecv *notif_progress_cpu;
+
+		struct docaNotifSend *notif_send_gpu;
+		struct docaNotifSend *notif_send_cpu;
+
 		// Map of agent name to saved nixlDocaConnection info
 		std::unordered_map<std::string, nixlDocaConnection,
 						   std::hash<std::string>, strEqual> remoteConnMap;
@@ -258,7 +266,9 @@ class nixlDocaEngine : public nixlBackendEngine {
 	public:
 		CUcontext main_cuda_ctx;
 		int oob_sock_server;
-		std::mutex notifLock;
+		std::mutex notifFillLock;
+		std::mutex notifProgressLock;
+		std::mutex notifSendLock;
 		std::vector<std::pair<uint32_t, struct doca_gpu *>> gdevs; /* List of DOCA GPUNetIO device handlers */
 		struct doca_dev *ddev;	  /* DOCA device handler associated to queues */
 		nixl_status_t addRdmaQp(const std::string &remote_agent);
@@ -341,7 +351,11 @@ extern "C" {
 // prepXferGpu postXferGpuGet();
 doca_error_t doca_kernel_write(cudaStream_t stream, struct doca_gpu_dev_rdma *rdma_gpu, struct docaXferReqGpu *xferReqRing, uint32_t pos);
 doca_error_t doca_kernel_read(cudaStream_t stream, struct doca_gpu_dev_rdma *rdma_gpu, struct docaXferReqGpu *xferReqRing, uint32_t pos);
-doca_error_t doca_kernel_progress(cudaStream_t stream, struct docaXferCompletion *completion_list, struct docaNotifRecv *notif_fill, struct docaNotifRecv *notif_progress, uint32_t *exit_flag);
+doca_error_t doca_kernel_progress(cudaStream_t stream, struct docaXferCompletion *completion_list,
+								struct docaNotifRecv *notif_fill,
+								struct docaNotifRecv *notif_progress,
+								struct docaNotifSend *notif_send_gpu,
+								uint32_t *exit_flag);
 
 #if __cplusplus
 }

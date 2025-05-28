@@ -68,7 +68,7 @@ static void checkCudaError(cudaError_t result, const char *message) {
 	}
 }
 
-__global__ void target_kernel(uintptr_t addr)
+__global__ void target_kernel(uintptr_t addr, uint8_t val)
 {
 	uint8_t ok = 1;
 	uintptr_t buffer_addr = addr + (threadIdx.x * SIZE);
@@ -79,7 +79,7 @@ __global__ void target_kernel(uintptr_t addr)
 	while(VOLATILE(((uint8_t*)buffer_addr)[0]) == 0);
 
 	for (int i = 0; i < (int)SIZE; i++) {
-		if (((uint8_t*)buffer_addr)[i] != INITIATOR_VALUE) {
+		if (((uint8_t*)buffer_addr)[i] != val) {
 			printf(">>>>>>> CUDA target byte %x is wrong\n", i);
 			ok = 1;
 		}
@@ -90,7 +90,7 @@ __global__ void target_kernel(uintptr_t addr)
 		printf(">>>>>>> CUDA target, not all received bytes are ok!\n");
 }
 
-int launch_target_wait_kernel(cudaStream_t stream, uintptr_t addr)
+int launch_target_wait_kernel(cudaStream_t stream, uintptr_t addr, uint8_t val)
 {
 	cudaError_t result = cudaSuccess;
 
@@ -101,7 +101,7 @@ int launch_target_wait_kernel(cudaStream_t stream, uintptr_t addr)
 		return -1;
 	}
 
-	target_kernel<<<1, TRANSFER_NUM_BUFFER, 0, stream>>>(addr);
+	target_kernel<<<1, TRANSFER_NUM_BUFFER, 0, stream>>>(addr, val);
 	result = cudaGetLastError();
 	if (result != cudaSuccess) {
 		fprintf(stderr, "[%s:%d] cuda failed with %s", __FILE__, __LINE__, cudaGetErrorString(result));
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
 	/** Descriptors and Transfer Request */
 	nixl_reg_dlist_t  dram_for_doca(DRAM_SEG);
 	nixlXferReqH      *treq[TRANSFER_NUM];
-	nixl_notifs_t notifs;
+	nixl_notifs_t notifs1, notifs2;
 
 	/** Argument Parsing */
 	if (argc < 5) {
@@ -300,6 +300,19 @@ int main(int argc, char *argv[]) {
 		client.sendData(serdes->exportStr());
 		std::cout << " End Control Path metadata exchanges \n";
 
+		do {
+			nixl_status_t ret = agent.getNotifs(notifs1);
+		} while(notifs1.size() == 0);
+
+		for (const auto& n : notifs1) {
+			if (n.first == "target" && n.second[0] == "connected") {
+				std::cout << "Received correct message from " << n.first << " msg: " << n.second[0] << std::endl;
+				break;
+			} else {
+				std::cout << "Received wrong message from " << n.first << " msg: " << n.second[0] << std::endl;
+			}
+		}
+		
 		std::cout << " Start Data Path Exchanges \n";
 		std::cout << " Waiting to receive Data from Initiator\n";
 
@@ -308,13 +321,13 @@ int main(int argc, char *argv[]) {
 		/* 1 target CUDA kernel per transfer. Each thread will check a single buffer in the transfer */
 		for (int i = 0; i < TRANSFER_NUM; i++) {
 			do {
-				nixl_status_t ret = agent.getNotifs(notifs);
-			} while(notifs.size() == 0);
+				nixl_status_t ret = agent.getNotifs(notifs2);
+			} while(notifs2.size() == 0);
 
-			for (const auto& n : notifs) {
+			for (const auto& n : notifs2) {
 				if (n.first == "target" && n.second[0] == "sent") {
 					std::cout << "Received correct message from " << n.first << " msg: " << n.second[0] << std::endl;
-					launch_target_wait_kernel(stream[0], (uintptr_t)(data_address));	
+					launch_target_wait_kernel(stream[0], (uintptr_t)(data_address), INITIATOR_VALUE);
 					cudaStreamSynchronize(stream[0]);
 					std::cout << " DOCA Transfer completed!\n";
 					break;
@@ -322,7 +335,6 @@ int main(int argc, char *argv[]) {
 					std::cout << "Received wrong message from " << n.first << " msg: " << n.second[0] << std::endl;
 				}
 			}
-
 		}
 		cudaStreamDestroy(stream[0]);
 	} else {
@@ -343,6 +355,9 @@ int main(int argc, char *argv[]) {
 		remote_metadata = remote_serdes->getStr("AgentMD");
 		assert (remote_metadata != "");
 		agent.loadRemoteMD(remote_metadata, target_name);
+
+		std::string msg = "connected";
+		agent.genNotif("target", msg);
 
 		std::cout << " Verify Deserialized Target's Desc List at Initiator\n";
 		nixl_xfer_dlist_t dram_target_doca(remote_serdes);

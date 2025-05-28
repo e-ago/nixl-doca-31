@@ -86,10 +86,10 @@ nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent,
 {
 	doca_error_t result;
 	struct nixlDocaNotif *notif;
-	// cudaError_t err;
+	bool exist = false;
 
 	//Same peer can be server or client
-	if(notifMap.find(remote_agent) != notifMap.end()) {
+	if (notifMap.find(remote_agent) != notifMap.end()) {
 		return NIXL_SUCCESS;
 	}
 
@@ -206,14 +206,21 @@ nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent,
 	notif->send_pi = 0;
 	notif->recv_pi = 0;
 
-	notifLock.lock();
+	// Ensure notif list is not added twice for the same peer
+	notifFillLock.lock();
+	if (notifMap.find(remote_agent) != notifMap.end()) {
+		exist = true;
+		notifFillLock.unlock();
+	} else {
+		notifMap[remote_agent] = notif;
+		((volatile struct docaNotifRecv *)notif_fill_cpu)->barr_gpu = notif->recv_barr_gpu;
+		((volatile struct docaNotifRecv *)notif_fill_cpu)->rdma_qp = qpMap[remote_agent]->rdma_gpu_notif;
+		while (((volatile struct docaNotifRecv *)notif_fill_cpu)->rdma_qp != nullptr);
+		notifFillLock.unlock();
+	}
 
-	notifMap[remote_agent] = notif;
-	((volatile struct docaNotifRecv *)notif_fill_cpu)->rdma_qp = qpMap[remote_agent]->rdma_gpu_notif;
-	((volatile struct docaNotifRecv *)notif_fill_cpu)->barr_gpu = notif->recv_barr_gpu;
-	while (((volatile struct docaNotifRecv *)notif_fill_cpu)->rdma_qp != nullptr);
-
-	notifLock.unlock();
+	if (exist == true)
+		goto error;
 
 	return NIXL_SUCCESS;
 
@@ -459,7 +466,7 @@ nixl_status_t nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
 	struct nixlDocaRdmaQp *rdma_qp;
 
 	//Same peer can be server or client
-	if(qpMap.find(remote_agent) != qpMap.end()) {
+	if (qpMap.find(remote_agent) != qpMap.end()) {
 		return NIXL_SUCCESS;
 	}
 
@@ -970,6 +977,8 @@ nixlDocaEngine::nixlDocaEngine (const nixlBackendInitParams* init_params)
 		DOCA_LOG_ERR("Function doca_gpu_mem_alloc returned %s", doca_error_get_descr(result));
 	}
 
+	memset(completion_list_cpu, 0, sizeof(struct docaXferCompletion) * DOCA_MAX_COMPLETION_INFLIGHT);
+
 	result = doca_gpu_mem_alloc(gdevs[0].second, sizeof(uint32_t),
 		4096,
 		DOCA_GPU_MEM_TYPE_GPU_CPU,
@@ -999,12 +1008,24 @@ nixlDocaEngine::nixlDocaEngine (const nixlBackendInitParams* init_params)
 		DOCA_LOG_ERR("Function doca_gpu_mem_alloc returned %s", doca_error_get_descr(result));
 	}
 
+	memset(notif_progress_cpu, 0, sizeof(struct docaNotifRecv) * 1);
+
+	result = doca_gpu_mem_alloc(gdevs[0].second, sizeof(struct docaNotifSend) * 1,
+		4096,
+		DOCA_GPU_MEM_TYPE_CPU_GPU,
+		(void **)&notif_send_gpu,
+		(void **)&notif_send_cpu);
+	if (result != DOCA_SUCCESS || notif_send_gpu == NULL || notif_send_cpu == NULL) {
+		DOCA_LOG_ERR("Function doca_gpu_mem_alloc returned %s", doca_error_get_descr(result));
+	}
+
+	memset(notif_send_cpu, 0, sizeof(struct docaNotifSend) * 1);
+
 	cuCtxGetCurrent(&main_cuda_ctx);
-	printf("main main_cuda_ctx %p\n", (void*)main_cuda_ctx);
 	//Warmup
-	doca_kernel_progress(wait_stream, nullptr, notif_fill_gpu, notif_progress_gpu, wait_exit_gpu);
+	doca_kernel_progress(wait_stream, nullptr, notif_fill_gpu, notif_progress_gpu, notif_send_gpu, wait_exit_gpu);
 	cudaStreamSynchronize(wait_stream);
-	doca_kernel_progress(wait_stream, completion_list_gpu, notif_fill_gpu, notif_progress_gpu, wait_exit_gpu);
+	doca_kernel_progress(wait_stream, 	completion_list_gpu, notif_fill_gpu, notif_progress_gpu, notif_send_gpu, wait_exit_gpu);
 
 	// We may need a GPU warmup with relevant DOCA engine kernels
 	doca_kernel_write(0, nullptr, nullptr, 0);
@@ -1063,6 +1084,7 @@ nixlDocaEngine::~nixlDocaEngine ()
 
 	doca_gpu_mem_free(gdevs[0].second, notif_fill_gpu);
 	doca_gpu_mem_free(gdevs[0].second, notif_progress_gpu);
+	doca_gpu_mem_free(gdevs[0].second, notif_send_gpu);
 
 	DOCA_LOG_ERR("free completion_list_gpu");
 	doca_gpu_mem_free(gdevs[0].second, completion_list_gpu);
@@ -1118,7 +1140,7 @@ nixl_status_t nixlDocaEngine::loadRemoteConnInfo(const std::string &remote_agent
 	char* addr = new char[size];
 	size_t ragent_size = remote_agent.size();
 
-	if(remoteConnMap.find(remote_agent) != remoteConnMap.end()) {
+	if (remoteConnMap.find(remote_agent) != remoteConnMap.end()) {
 		return NIXL_ERR_INVALID_PARAM;
 	}
 
@@ -1279,7 +1301,7 @@ nixlDocaEngine::internalMDHelper(const nixl_blob_t &blob,
 	size_t size = blob.size();
 	auto search = remoteConnMap.find(agent);
 
-	if(search == remoteConnMap.end()) {
+	if (search == remoteConnMap.end()) {
 		//TODO: err: remote connection not found
 		DOCA_LOG_ERR("err: remote connection not found");
 		return NIXL_ERR_NOT_FOUND;
@@ -1388,7 +1410,7 @@ nixl_status_t nixlDocaEngine::prepXfer (const nixl_xfer_op_t &operation,
 			return NIXL_ERR_INVALID_PARAM;
 	}
 
-	if(qpMap.find(remote_agent) == qpMap.end()) {
+	if (qpMap.find(remote_agent) == qpMap.end()) {
 		std::cout << "Can't find remote_agent " << remote_agent << "\n";
 		return NIXL_ERR_INVALID_PARAM;
 	}
@@ -1488,7 +1510,7 @@ nixl_status_t nixlDocaEngine::prepXfer (const nixl_xfer_op_t &operation,
 		treq->end_pos = xferRingPos;
 
 		if (opt_args && opt_args->hasNotif) {
-			if(notifMap.find(remote_agent) == notifMap.end()) {
+			if (notifMap.find(remote_agent) == notifMap.end()) {
 				std::cout << "Can't find notif for remote_agent " << remote_agent << "\n";
 				return NIXL_ERR_INVALID_PARAM;
 			}
@@ -1499,7 +1521,7 @@ nixl_status_t nixlDocaEngine::prepXfer (const nixl_xfer_op_t &operation,
 			xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx = (notif->send_pi.fetch_add(1) & (notif->elems_num - 1));
 			xferReqRingCpu[treq->end_pos-1].notif_barr_gpu = notif->send_barr_gpu;
 
-			printf("HAS NOTIF pos %d - %s\n", treq->end_pos-1, newMsg.c_str());
+			printf("HAS NOTIF pos %d - %s\n", xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx, newMsg.c_str());
 
 			memcpy(notif->send_addr + (xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx * notif->elems_size),
 					newMsg.c_str(),
@@ -1603,21 +1625,36 @@ nixl_status_t nixlDocaEngine::getNotifs(notif_list_t &notif_list)
 {
 	uint32_t tmp;
 	std::string msg_out;
+	uint32_t cnt = 0;
 
-	for (auto notif : notifMap) {
+	for (auto &notif : notifMap) {
 		do {
 			tmp = notif.second->recv_pi;
+			// printf("notif idx %d addr %p\n", tmp, (notif.second->recv_addr + (tmp * notif.second->elems_size)));
 			msg_out = (char*)(notif.second->recv_addr + (tmp * notif.second->elems_size));
 			size_t position = msg_out.find(msg_tag);
 			if (position != std::string::npos && position == 0) {
 				std::string msg = msg_out.substr(msg_tag.size(), DOCA_MAX_NOTIF_MESSAGE_SIZE-msg_tag.size()); //msg_c;
 				notif_list.push_back(std::pair(notif.first, msg));
 				msg_out.replace(0, msg_tag.size(), "0000");
-				//progress
-				notif.second->recv_pi.fetch_add(1);
-			} else 
+				notif.second->recv_pi.fetch_add(1); //, std::memory_order_acq_rel);
+				cnt++;
+			} else
 				break;
 		} while (1);
+
+		//Not thread safe
+		if (cnt > 0) {
+			notifProgressLock.lock();
+			//kernel progress
+			((volatile struct docaNotifRecv *)notif_progress_cpu)->barr_gpu = notif.second->recv_barr_gpu;
+			((volatile struct docaNotifRecv *)notif_progress_cpu)->num_progress = cnt;
+			//membar
+			((volatile struct docaNotifRecv *)notif_progress_cpu)->rdma_qp = qpMap[notif.first]->rdma_gpu_notif;
+			while (((volatile struct docaNotifRecv *)notif_progress_cpu)->rdma_qp != nullptr);
+			notifProgressLock.unlock();
+		}
+		cnt = 0;
 	}
 
 	return NIXL_SUCCESS;
@@ -1625,18 +1662,31 @@ nixl_status_t nixlDocaEngine::getNotifs(notif_list_t &notif_list)
 
 nixl_status_t nixlDocaEngine::genNotif(const std::string &remote_agent, const std::string &msg)
 {
-	nixl_status_t ret = NIXL_SUCCESS;
-	// ret = notifSendPriv(remote_agent, msg, req);
+	struct nixlDocaNotif *notif;
+	uint32_t buf_idx;
 
-	switch(ret) {
-	case NIXL_IN_PROG:
-		/* do not track the request */
-		// uw->reqRelease(req);
-	case NIXL_SUCCESS:
-		break;
-	default:
-		/* error case */
-		return ret;
+	if (notifMap.find(remote_agent) == notifMap.end()) {
+		std::cout << "Can't find remote_agent " << remote_agent << "\n";
+		return NIXL_ERR_INVALID_PARAM;
 	}
+
+	if (qpMap.find(remote_agent) == qpMap.end()) {
+		std::cout << "Can't find remote_agent " << remote_agent << "\n";
+		return NIXL_ERR_INVALID_PARAM;
+	}
+	notif = notifMap[remote_agent];
+
+	std::string newMsg = msg_tag + msg;
+	buf_idx = (notif->send_pi.fetch_add(1) & (notif->elems_num - 1));
+	memcpy(notif->send_addr + (buf_idx * notif->elems_size), newMsg.c_str(), newMsg.size());
+
+	notifSendLock.lock();
+	((volatile struct docaNotifSend *)notif_send_cpu)->barr_gpu = notif->send_barr_gpu;
+	((volatile struct docaNotifSend *)notif_send_cpu)->buf_idx = buf_idx;
+	//membar
+	((volatile struct docaNotifSend *)notif_send_cpu)->rdma_qp = qpMap[remote_agent]->rdma_gpu_notif;
+	while (((volatile struct docaNotifSend *)notif_send_cpu)->rdma_qp != nullptr);
+	notifSendLock.unlock();
+
 	return NIXL_SUCCESS;
 }
