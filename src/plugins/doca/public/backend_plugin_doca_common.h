@@ -30,10 +30,14 @@ struct docaXferReqGpu {
     size_t size[DOCA_XFER_REQ_SIZE];
     uint16_t num;
     uint8_t in_use;
+    uint32_t conn_idx;
+    uint8_t has_notif;
+    uint32_t has_notif_msg_idx;
     uint32_t *last_rsvd;
     uint32_t *last_posted;
     nixl_xfer_op_t backendOp;           /* Needed only in case of GPU device transfer */
-    struct doca_gpu_dev_rdma *rdma_gpu; /* Needed only in case of GPU device transfer */
+    struct doca_gpu_dev_rdma *rdma_gpu_data; /* DOCA RDMA instance GPU handler */
+    struct doca_gpu_dev_rdma *rdma_gpu_notif; /* DOCA RDMA instance GPU handler */
 };
 
 #endif
