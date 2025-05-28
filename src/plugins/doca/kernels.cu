@@ -322,9 +322,7 @@ doca_error_t doca_kernel_progress(cudaStream_t stream, struct docaXferCompletion
         return DOCA_ERROR_BAD_STATE;
     }
 
-	printf("launching kernel_progress completion_list %p notif_fill %p notif_progress %p notif_send_gpu %p\n",
-				(void*)completion_list, (void*)notif_fill, (void*)notif_progress, (void*)notif_send_gpu);
-    kernel_progress<<<2, 1, 0, stream>>>(completion_list, notif_fill, notif_progress, notif_send_gpu, exit_flag);
+	kernel_progress<<<2, 1, 0, stream>>>(completion_list, notif_fill, notif_progress, notif_send_gpu, exit_flag);
     result = cudaGetLastError();
     if (result != cudaSuccess) {
         fprintf(stderr, "[%s:%d] cuda failed with %s", __FILE__, __LINE__, cudaGetErrorString(result));

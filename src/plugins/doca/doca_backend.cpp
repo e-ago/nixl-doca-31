@@ -337,7 +337,8 @@ void * progressFunc(void *arg)
 		client_size = sizeof(client_addr);
 		oob_sock_client = accept(eng->oob_sock_server, (struct sockaddr *)&client_addr, &client_size);
 		if (oob_sock_client < 0) {
-			DOCA_LOG_ERR("Can't accept new socket connection %d", oob_sock_client);
+			if (ACCESS_ONCE(eng->pthrStop) == 0) 
+				DOCA_LOG_ERR("Can't accept new socket connection %d", oob_sock_client);
 			close(eng->oob_sock_server);
 			return NULL;
 		}
@@ -1146,7 +1147,6 @@ nixl_status_t nixlDocaEngine::loadRemoteConnInfo(const std::string &remote_agent
 
 	nixlSerDes::_stringToBytes((void*) addr, remote_conn_info, size);
 
-	printf("loadRemoteConnInfo -- client\n");
 	int ret = oob_connection_client_setup(addr, &oob_sock_client);
 	if (ret < 0) {
 		DOCA_LOG_ERR("Can't connect to server %d", ret);
@@ -1521,7 +1521,7 @@ nixl_status_t nixlDocaEngine::prepXfer (const nixl_xfer_op_t &operation,
 			xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx = (notif->send_pi.fetch_add(1) & (notif->elems_num - 1));
 			xferReqRingCpu[treq->end_pos-1].notif_barr_gpu = notif->send_barr_gpu;
 
-			printf("HAS NOTIF pos %d - %s\n", xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx, newMsg.c_str());
+			printf("xfer with notif at %d\n", xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx);
 
 			memcpy(notif->send_addr + (xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx * notif->elems_size),
 					newMsg.c_str(),
@@ -1547,18 +1547,12 @@ nixl_status_t nixlDocaEngine::postXfer (const nixl_xfer_op_t &operation,
 {
 	nixlDocaBckndReq *treq = (nixlDocaBckndReq *) handle;
 
-	std::cout << "postXfer start " << treq->start_pos << " end " << treq->end_pos
-				<< " opt_args->hasNotif " << opt_args->hasNotif
-				<< " opt_args->notifMsg " << opt_args->notifMsg
-				<< " opt_args->notifMsg size " << opt_args->notifMsg.size()
-				<< "\n";
-
 	for (uint32_t idx = treq->start_pos; idx < treq->end_pos; idx++) {
 		xferReqRingCpu[idx].id = (lastPostedReq.fetch_add(1) & (DOCA_MAX_COMPLETION_INFLIGHT - 1));
 		completion_list_cpu[xferReqRingCpu[idx].id].xferReqRingGpu = xferReqRingGpu + idx;
 		completion_list_cpu[xferReqRingCpu[idx].id].completed = 0;
 
-		printf("Completion list idx %d id %d\n", idx, xferReqRingCpu[idx].id);
+		// printf("Completion list idx %d id %d\n", idx, xferReqRingCpu[idx].id);
 
 		switch (operation) {
 			case NIXL_READ:
@@ -1566,7 +1560,7 @@ nixl_status_t nixlDocaEngine::postXfer (const nixl_xfer_op_t &operation,
 				doca_kernel_read(treq->stream, xferReqRingCpu[idx].rdma_gpu_data, xferReqRingGpu, idx);
 				break;
 			case NIXL_WRITE:
-				std::cout << "WRITE KERNEL, pos " << idx << " num " << xferReqRingCpu[idx].num << "\n";
+				// std::cout << "WRITE KERNEL, pos " << idx << " num " << xferReqRingCpu[idx].num << "\n";
 				doca_kernel_write(treq->stream, xferReqRingCpu[idx].rdma_gpu_data, xferReqRingGpu, idx);
 				break;
 			default:
@@ -1673,7 +1667,7 @@ nixl_status_t nixlDocaEngine::genNotif(const std::string &remote_agent, const st
 	if (qpMap.find(remote_agent) == qpMap.end()) {
 		std::cout << "Can't find remote_agent " << remote_agent << "\n";
 		return NIXL_ERR_INVALID_PARAM;
-	}
+
 	notif = notifMap[remote_agent];
 
 	std::string newMsg = msg_tag + msg;
