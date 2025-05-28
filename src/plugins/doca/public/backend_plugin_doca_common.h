@@ -31,8 +31,8 @@ struct docaXferReqGpu {
     uint16_t num;
     uint8_t in_use;
     uint32_t conn_idx;
-    uint8_t has_notif;
     uint32_t has_notif_msg_idx;
+    struct doca_gpu_buf_arr *notif_barr_gpu;
     uint32_t *last_rsvd;
     uint32_t *last_posted;
     nixl_xfer_op_t backendOp;           /* Needed only in case of GPU device transfer */

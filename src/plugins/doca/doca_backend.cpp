@@ -65,7 +65,7 @@ static int oob_connection_client_setup(const char *server_ip, int *oob_sock_fd)
 	return 0;
 }
 
-static  void oob_connection_client_close(int oob_sock_fd)
+static void oob_connection_client_close(int oob_sock_fd)
 {
 	if (oob_sock_fd > 0)
 		close(oob_sock_fd);
@@ -82,9 +82,11 @@ static void oob_connection_server_close(int oob_sock_fd) //, int oob_sock_client
 	}
 }
 
-nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, struct doca_dev *dev, struct doca_gpu *gpu) {
+nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, struct doca_dev *dev, struct doca_gpu *gpu)
+{
 	doca_error_t result;
 	struct nixlDocaNotif *notif;
+	// cudaError_t err;
 
 	//Same peer can be server or client
 	if(notifMap.find(remote_agent) != notifMap.end()) {
@@ -93,7 +95,7 @@ nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent,
 
 	notif = new struct nixlDocaNotif;
 
-	result = doca_gpu_mem_alloc(gpu, 4 * sizeof(uint32_t),
+	result = doca_gpu_mem_alloc(gpu, 2 * sizeof(uint32_t),
 		4096,
 		DOCA_GPU_MEM_TYPE_CPU_GPU,
 		(void **)&notif->flag_addr_gpu,
@@ -102,15 +104,10 @@ nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent,
 		DOCA_LOG_ERR("Function doca_gpu_mem_alloc returned %s", doca_error_get_descr(result));
 	}
 
-	notif->send_pi_gpu = notif->flag_addr_gpu;
-	notif->send_last_gpu = notif->flag_addr_gpu+1;
-	notif->recv_ci_gpu = notif->flag_addr_gpu+2;
-	notif->recv_last_gpu = notif->flag_addr_gpu+3;
-
-	notif->send_pi_cpu = notif->flag_addr_cpu;
-	notif->send_last_cpu = notif->flag_addr_cpu+1;
-	notif->recv_ci_cpu = notif->flag_addr_cpu+2;
-	notif->recv_last_cpu = notif->flag_addr_cpu+3;
+	notif->recv_ci_gpu = notif->flag_addr_gpu;
+	notif->recv_last_gpu = notif->flag_addr_gpu+1;
+	notif->recv_ci_cpu = notif->flag_addr_cpu;
+	notif->recv_last_cpu = notif->flag_addr_cpu+1;
 
 	notif->elems_num = DOCA_MAX_NOTIF_INFLIGHT;
 	notif->elems_size = DOCA_MAX_NOTIF_MESSAGE_SIZE;
@@ -120,8 +117,6 @@ nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent,
 		return NIXL_ERR_BACKEND;
 	}
 	memset(notif->send_addr, 0, notif->elems_size * notif->elems_num);
-
-	*notif->send_pi_cpu = 0;
 
 	{
 		result = doca_mmap_create(&(notif->send_mmap));
@@ -233,9 +228,20 @@ nixl_status_t nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent,
 			goto error;
 	}
 
+	notif->send_pi = 0;
+
 	notifMap[remote_agent] = notif;
 
-	printf("New Notif added for %s\n", remote_agent.c_str());
+	printf("Filling notif_fill_gpu %p notif_fill_cpu %p\n", (void*)notif_fill_gpu, (void*)notif_fill_cpu);
+	((volatile struct docaNotifRecv *)notif_fill_cpu)->rdma_qp = qpMap[remote_agent]->rdma_gpu_notif;
+	((volatile struct docaNotifRecv *)notif_fill_cpu)->barr_gpu = notif->recv_barr_gpu;
+	printf("2 Filling notif_fill_gpu rdma_qp %p \n", (void*)((volatile struct docaNotifRecv *)notif_fill_cpu)->rdma_qp);
+	while (((volatile struct docaNotifRecv *)notif_fill_cpu)->rdma_qp != nullptr);
+	// cuFlushGPUDirectRDMAWrites(CU_FLUSH_GPU_DIRECT_RDMA_WRITES_TARGET_CURRENT_CTX,
+	// 		CU_FLUSH_GPU_DIRECT_RDMA_WRITES_TO_ALL_DEVICES);
+
+	printf("New Notif added for %s + notif on rdma qp %p\n",
+		remote_agent.c_str(), (void*)qpMap[remote_agent]->rdma_gpu_notif);
 
 	return NIXL_SUCCESS;
 
@@ -335,24 +341,28 @@ open_doca_device_with_ibdev_name(const uint8_t *value, size_t val_size, struct d
  * Progress thread management
 *****************************************/
 
-void nixlDocaEngine::progressFunc()
+// void nixlDocaEngine::progressFunc(void *arg)
+void * progressFunc(void *arg)
 {
     using namespace nixlTime;
 	struct sockaddr_in client_addr = {0};
 	unsigned int client_size = 0;
 	size_t msg_size;
 	char *remote_agent;
+	int oob_sock_client;
 
-	pthrActive = 1;
+	nixlDocaEngine *eng = (nixlDocaEngine *)arg;
 
-	while (ACCESS_ONCE(pthrStop) == 0) {
+	eng->pthrActive = 1;
+
+	while (ACCESS_ONCE(eng->pthrStop) == 0) {
 		/* Accept an incoming connection: */
 		client_size = sizeof(client_addr);
-		oob_sock_client = accept(oob_sock_server, (struct sockaddr *)&client_addr, &client_size);
+		oob_sock_client = accept(eng->oob_sock_server, (struct sockaddr *)&client_addr, &client_size);
 		if (oob_sock_client < 0) {
 			DOCA_LOG_ERR("Can't accept new socket connection %d", oob_sock_client);
-			close(oob_sock_server);
-			return;
+			close(eng->oob_sock_server);
+			return NULL;
 		}
 
 		DOCA_LOG_INFO("Client connected at IP: %s and port: %i",
@@ -376,25 +386,27 @@ void nixlDocaEngine::progressFunc()
 			close(oob_sock_client);
 		}
 
-		addRdmaQp(remote_agent);
-		nixlDocaInitNotif(remote_agent, ddev, gdevs[0].second);
-		connectServerRdmaQp(oob_sock_client, remote_agent);
-	
-        /* Wait for predefined number of */
-        nixlTime::us_t start = nixlTime::getUs();
-        while( (start + DOCA_RDMA_SERVER_CONN_DELAY) > nixlTime::getUs()) {
-            std::this_thread::yield();
-        }
-    }
+		printf("thread main_cuda_ctx %p\n", (void*)eng->main_cuda_ctx);
+		cuCtxSetCurrent(eng->main_cuda_ctx);
+		eng->addRdmaQp(remote_agent);
+		eng->nixlDocaInitNotif(remote_agent, eng->ddev, eng->gdevs[0].second);
+		eng->connectServerRdmaQp(oob_sock_client, remote_agent);
 
-	return;
+		/* Wait for predefined number of */
+		nixlTime::us_t start = nixlTime::getUs();
+		while( (start + DOCA_RDMA_SERVER_CONN_DELAY) > nixlTime::getUs()) {
+			std::this_thread::yield();
+		}
+	}
+
+	return NULL;
 }
 
 void nixlDocaEngine::progressThreadStart()
 {
 	struct sockaddr_in server_addr = {0};
 	int enable = 1;
-
+	int result;
     pthrStop = pthrActive = 0;
     noSyncIters = 32;
 
@@ -439,18 +451,24 @@ void nixlDocaEngine::progressThreadStart()
 
     // Start the thread
     // TODO [Relaxed mem] mem barrier to ensure pthr_x updates are complete
-    new (&pthr) std::thread(&nixlDocaEngine::progressFunc, this);
+    // new (&pthr) std::thread(&nixlDocaEngine::progressFunc, this);
+
+	result = pthread_create(&server_thread_id, NULL, progressFunc, (void *)this);
+	if (result != 0) {
+		perror("Failed to create thread");
+	}
 
     // Wait for the thread to be started
-    while(!pthrActive){
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    // while(!pthrActive){
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    // }
 }
 
 void nixlDocaEngine::progressThreadStop()
 {
     ACCESS_ONCE(pthrStop) = 1;
-    pthr.join();
+    // pthr.join();
+	pthread_join(server_thread_id, NULL);
 }
 
 void nixlDocaEngine::progressThreadRestart()
@@ -940,7 +958,6 @@ nixlDocaEngine::nixlDocaEngine (const nixlBackendInitParams* init_params)
 		}
 	}
 
-
 	doca_devinfo_get_ipv4_addr(doca_dev_as_devinfo(ddev),
 						    (uint8_t *)ipv4_addr,
 						    DOCA_DEVINFO_IPV4_ADDR_SIZE);
@@ -993,13 +1010,30 @@ nixlDocaEngine::nixlDocaEngine (const nixlBackendInitParams* init_params)
 
 	((volatile uint8_t *)wait_exit_cpu)[0] = 0;
 
+	result = doca_gpu_mem_alloc(gdevs[0].second, sizeof(struct docaNotifRecv) * 1,
+		4096,
+		DOCA_GPU_MEM_TYPE_CPU_GPU,
+		(void **)&notif_fill_gpu,
+		(void **)&notif_fill_cpu);
+	if (result != DOCA_SUCCESS || notif_fill_gpu == NULL || notif_fill_cpu == NULL) {
+		DOCA_LOG_ERR("Function doca_gpu_mem_alloc returned %s", doca_error_get_descr(result));
+	}
+
+	result = doca_gpu_mem_alloc(gdevs[0].second, sizeof(struct docaNotifRecv) * 1,
+		4096,
+		DOCA_GPU_MEM_TYPE_CPU_GPU,
+		(void **)&notif_progress_gpu,
+		(void **)&notif_progress_cpu);
+	if (result != DOCA_SUCCESS || notif_progress_gpu == NULL || notif_progress_cpu == NULL) {
+		DOCA_LOG_ERR("Function doca_gpu_mem_alloc returned %s", doca_error_get_descr(result));
+	}
+
+	cuCtxGetCurrent(&main_cuda_ctx);
+	printf("main main_cuda_ctx %p\n", (void*)main_cuda_ctx);
 	//Warmup
-	doca_kernel_progress(wait_stream, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+	doca_kernel_progress(wait_stream, nullptr, notif_fill_gpu, notif_progress_gpu, wait_exit_gpu);
 	cudaStreamSynchronize(wait_stream);
-	doca_kernel_progress(wait_stream, completion_list_gpu,
-		nullptr, nullptr, nullptr, // notifListRecv.barr_gpu, notifListRecv.pi_gpu, notifListRecv.ci_gpu,
-		nullptr, nullptr, nullptr, // // // notifListSend.barr_gpu, notifListSend.pi_gpu, notifListSend.ci_gpu,
-		wait_exit_gpu);
+	doca_kernel_progress(wait_stream, completion_list_gpu, notif_fill_gpu, notif_progress_gpu, wait_exit_gpu);
 
 	// We may need a GPU warmup with relevant DOCA engine kernels
 	doca_kernel_write(0, nullptr, nullptr, 0);
@@ -1055,6 +1089,10 @@ nixlDocaEngine::~nixlDocaEngine ()
 	DOCA_LOG_ERR("free notifListv");
 	for (auto notif : notifMap)
 		nixlDocaDestroyNotif(gdevs[0].second, notif.second);
+
+	doca_gpu_mem_free(gdevs[0].second, notif_fill_gpu);
+	doca_gpu_mem_free(gdevs[0].second, notif_progress_gpu);
+
 	DOCA_LOG_ERR("free completion_list_gpu");
 	doca_gpu_mem_free(gdevs[0].second, completion_list_gpu);
 
@@ -1136,7 +1174,6 @@ nixl_status_t nixlDocaEngine::loadRemoteConnInfo(const std::string &remote_agent
 	addRdmaQp(remote_agent);
 	nixlDocaInitNotif(remote_agent, ddev, gdevs[0].second);
 	connectClientRdmaQp(oob_sock_client, remote_agent);
-
 	conn.remoteAgent = remote_agent;
 	conn.connected = true;
 
@@ -1483,14 +1520,23 @@ nixl_status_t nixlDocaEngine::prepXfer (const nixl_xfer_op_t &operation,
 
 		printf("HAS NOTIF? %d\n", opt_args->hasNotif);
 		if (opt_args && opt_args->hasNotif) {
-			// xferReqRingCpu[treq->end_pos-1].has_notif = 1;
-			printf("HAS NOTIF pos %d\n", treq->end_pos-1);
+			if(notifMap.find(remote_agent) == notifMap.end()) {
+				std::cout << "Can't find notif for remote_agent " << remote_agent << "\n";
+				return NIXL_ERR_INVALID_PARAM;
+			}
 
-			// memcpy(notifListSend.addr + (*notifListSend.pi_cpu * DOCA_MAX_NOTIF_MESSAGE_SIZE),
-			// 	opt_args->notifMsg.c_str(),
-			// 	opt_args->notifMsg.size());
-			// xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx = *notifListSend.pi_cpu;
-			// *notifListSend.pi_cpu = (*notifListSend.pi_cpu + 1) & (DOCA_MAX_NOTIF_INFLIGHT - 1);
+			struct nixlDocaNotif *notif = notifMap[remote_agent];
+			//Checl notifMsg size
+			std::string newMsg = "0xFF" + opt_args->notifMsg;
+			xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx = (notif->send_pi.fetch_add(1) & (notif->elems_num - 1));
+			xferReqRingCpu[treq->end_pos-1].notif_barr_gpu = notif->send_barr_gpu;
+			printf("HAS NOTIF pos %d - %s\n", treq->end_pos-1, newMsg.c_str());
+
+			memcpy(notif->send_addr + (xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx * notif->elems_size),
+					newMsg.c_str(),
+					newMsg.size());
+		} else {
+			xferReqRingCpu[treq->end_pos-1].has_notif_msg_idx = DOCA_NOTIF_NULL;
 		}
 
 		treq->backendHandleGpu = 0;
