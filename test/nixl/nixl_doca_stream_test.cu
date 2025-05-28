@@ -210,6 +210,7 @@ int main(int argc, char *argv[]) {
 	/** Descriptors and Transfer Request */
 	nixl_reg_dlist_t  dram_for_doca(DRAM_SEG);
 	nixlXferReqH      *treq[TRANSFER_NUM];
+	nixl_notifs_t notifs;
 
 	/** Argument Parsing */
 	if (argc < 5) {
@@ -306,18 +307,23 @@ int main(int argc, char *argv[]) {
 
 		/* 1 target CUDA kernel per transfer. Each thread will check a single buffer in the transfer */
 		for (int i = 0; i < TRANSFER_NUM; i++) {
-			printf("Launching kernel %d addr %lx\n", i, (uintptr_t)(data_address));
-			launch_target_wait_kernel(stream[0], (uintptr_t)(data_address));
-			// while(1) {
-			// 	nixl_notifs_t notifs;
-			// 	nixl_status_t ret = agent.getNotifs(notifs);
-			// }
-			
-			cudaStreamSynchronize(stream[0]);
+			do {
+				nixl_status_t ret = agent.getNotifs(notifs);
+			} while(notifs.size() == 0);
+
+			for (const auto& n : notifs) {
+				if (n.first == "target" && n.second[0] == "sent") {
+					std::cout << "Received correct message from " << n.first << " msg: " << n.second[0] << std::endl;
+					launch_target_wait_kernel(stream[0], (uintptr_t)(data_address));	
+					cudaStreamSynchronize(stream[0]);
+					std::cout << " DOCA Transfer completed!\n";
+					break;
+				} else {
+					std::cout << "Received wrong message from " << n.first << " msg: " << n.second[0] << std::endl;
+				}
+			}
+
 		}
-
-		std::cout << " DOCA Transfer completed!\n";
-
 		cudaStreamDestroy(stream[0]);
 	} else {
 		std::cout << " Receive metadata from Target \n";
@@ -358,7 +364,7 @@ int main(int argc, char *argv[]) {
 				extra_params.customParam.resize(sizeof(uintptr_t));
 				*((uintptr_t*) extra_params.customParam.data()) = (uintptr_t)stream[transfer_idx];
 			}
-			extra_params.notifMsg = "test";
+			extra_params.notifMsg = "sent";
 			extra_params.hasNotif = true;
 			ret = agent.createXferReq(NIXL_WRITE, dram_initiator_doca, dram_target_doca,
 							"target", treq[transfer_idx], &extra_params);
@@ -435,8 +441,6 @@ int main(int argc, char *argv[]) {
 		delete remote_serdes;
 
 	std::cout <<"Exit.. \n";
-
-	while(1);
 
 	return 0;
 }

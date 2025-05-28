@@ -150,7 +150,10 @@ __global__ void kernel_progress(struct docaXferCompletion *completion_list, stru
 						#endif
 
 						if (DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->has_notif_msg_idx) != DOCA_NOTIF_NULL) {
-							printf("HAS %d NOTIF TO SEND %d\n", index, DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->has_notif_msg_idx));
+							#if ENABLE_DEBUG == 1
+								printf("Notif after completion at %d id %d\n",
+										index, DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->has_notif_msg_idx));
+							#endif
 							doca_gpu_dev_buf_get_buf(completion_list[index].xferReqRingGpu->notif_barr_gpu, completion_list[index].xferReqRingGpu->has_notif_msg_idx, &send_buf);
 							result = doca_gpu_dev_rdma_send_strong(completion_list[index].xferReqRingGpu->rdma_gpu_notif, 0,
 												send_buf, 0, DOCA_MAX_NOTIF_MESSAGE_SIZE,
@@ -167,7 +170,9 @@ __global__ void kernel_progress(struct docaXferCompletion *completion_list, stru
 								printf("Error %d doca_gpu_dev_rdma_wait_all\n", result);
 								DOCA_GPUNETIO_VOLATILE(*exit_flag) = 1;
 							}
-							printf("ok notif %d\n", num_ops_notif);
+							#if ENABLE_DEBUG == 1
+								printf("Notif correctly sent %d\n", num_ops_notif);
+							#endif
 						}
 						DOCA_GPUNETIO_VOLATILE(completion_list[index].completed) = 1;
 						num_ops--;
@@ -180,10 +185,9 @@ __global__ void kernel_progress(struct docaXferCompletion *completion_list, stru
 	
 	//Fill recv & progress queue
 	if (blockIdx.x == 1) {
-		printf("waiting on notif_fill %p\n", (void*)notif_fill);
 		while (DOCA_GPUNETIO_VOLATILE(*exit_flag) == 0) {
 			if (DOCA_GPUNETIO_VOLATILE(notif_fill->rdma_qp) != nullptr) {
-				printf("refill!!\n");
+				// printf("refill!!\n");
 				result = doca_gpu_dev_rdma_get_recv(notif_fill->rdma_qp, &rdma_gpu_r);
 				if (result != DOCA_SUCCESS)
 					printf("Error %d doca_gpu_dev_rdma_get_recv\n", result);
@@ -214,9 +218,11 @@ __global__ void kernel_progress(struct docaXferCompletion *completion_list, stru
 					DOCA_GPUNETIO_VOLATILE(*exit_flag) = 1;
 				}
 			
+				#if ENABLE_DEBUG == 1
 				if (num_ops > 0) {
 					printf("Progress on %d notifications\n", num_ops);
 				}
+				#endif
 
 				DOCA_GPUNETIO_VOLATILE(notif_progress->rdma_qp) = nullptr;
 			}

@@ -61,10 +61,11 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define DOCA_RDMA_SERVER_ADDR_LEN (MAX(MAX(DOCA_DEVINFO_IPV4_ADDR_SIZE, DOCA_DEVINFO_IPV6_ADDR_SIZE), DOCA_GID_BYTE_LENGTH))
 #define DOCA_RDMA_SERVER_CONN_DELAY 500 //500us
-#define DOCA_MAX_NOTIF_INFLIGHT 64
+//Pre-fill the whole recv queue with notif once
+#define DOCA_MAX_NOTIF_INFLIGHT RDMA_RECV_QUEUE_SIZE
 #define DOCA_MAX_NOTIF_MESSAGE_SIZE 4096
-#define DOCA_CONNECT_QP_MSG "NEWQP"
 #define DOCA_NOTIF_NULL 0xFFFFFFFF
+#define DOCA_MSG_TAG 0xFF
 
 #ifndef ACCESS_ONCE
 #define ACCESS_ONCE(x) (*(volatile uint8_t *)&(x))
@@ -86,15 +87,11 @@ struct nixlDocaNotif {
 	uint32_t elems_size;
 	uint8_t *send_addr;
 	std::atomic<uint32_t> send_pi;
-	uint32_t send_last;
 	struct doca_mmap *send_mmap;
 	struct doca_buf_arr *send_barr;
 	struct doca_gpu_buf_arr *send_barr_gpu;
 	uint8_t *recv_addr;
-	uint32_t *recv_ci_cpu;
-	uint32_t *recv_ci_gpu;
-	uint32_t *recv_last_cpu;
-	uint32_t *recv_last_gpu;
+	std::atomic<uint32_t> recv_pi;
 	struct doca_mmap *recv_mmap;
 	struct doca_buf_arr *recv_barr;
 	struct doca_gpu_buf_arr *recv_barr_gpu;
@@ -110,6 +107,7 @@ struct docaXferCompletion {
 struct docaNotifRecv {
 	struct doca_gpu_dev_rdma *rdma_qp;
 	struct doca_gpu_buf_arr *barr_gpu;
+	int num_progress;
 };
 
 class nixlDocaConnection : public nixlBackendConnMD {
@@ -180,7 +178,7 @@ struct nixlDocaRdmaQp {
 class nixlDocaEngine : public nixlBackendEngine {
 	private:
 		struct doca_log_backend *sdk_log;
-
+		std::string msg_tag = "DOCA";
 		std::vector<struct nixlDocaRdmaQp> rdma_qp_v;
 
 		uint32_t local_port;
@@ -260,6 +258,7 @@ class nixlDocaEngine : public nixlBackendEngine {
 	public:
 		CUcontext main_cuda_ctx;
 		int oob_sock_server;
+		std::mutex notifLock;
 		std::vector<std::pair<uint32_t, struct doca_gpu *>> gdevs; /* List of DOCA GPUNetIO device handlers */
 		struct doca_dev *ddev;	  /* DOCA device handler associated to queues */
 		nixl_status_t addRdmaQp(const std::string &remote_agent);
