@@ -57,7 +57,9 @@ private:
         if (NIXL_SUCCESS != status) {
             return status;
         }
-        assert(m_context);
+        if (nullptr == m_context) {
+            NIXL_FATAL << "Unexpected NULL context";
+        }
 
         return NIXL_SUCCESS;
     }
@@ -189,26 +191,24 @@ _queryVmmPtr(const void *address, memory_t &type, int &id)
     // TODO: set the call to cuMemRelease when leaving the scope to avoid GOTO
 
     result = cuMemGetAllocationPropertiesFromHandle(&prop, alloc_handle);
-    if (result != CUDA_SUCCESS) {
+    if (result == CUDA_SUCCESS) {
+        id = prop.location.id;
+        switch (prop.location.type) {
+        case CU_MEM_LOCATION_TYPE_DEVICE:
+            type = MEM_VMM_DEV;
+            ret = NIXL_SUCCESS;
+            break;
+        default:
+            NIXL_DEBUG << "Unsupported VMM memory type: " << prop.location.type;
+            ret = NIXL_ERR_INVALID_PARAM;
+            break;
+        }
+    } else {
         NIXL_DEBUG << "cuMemGetAllocationPropertiesFromHandle() failed. result = "
-                << result;
+                   << result;
         ret = NIXL_ERR_UNKNOWN;
-        goto err;
     }
 
-    id = prop.location.id;
-    switch (prop.location.type) {
-    case CU_MEM_LOCATION_TYPE_DEVICE:
-        type = MEM_VMM_DEV;
-        ret = NIXL_SUCCESS;
-        break;
-    default:
-        NIXL_DEBUG << "Unsupported VMM memory type: " << prop.location.type;
-        ret = NIXL_ERR_INVALID_PARAM;
-        goto err;
-    }
-
-err:
     result = cuMemRelease(alloc_handle);
     if (CUDA_SUCCESS != result) {
         NIXL_DEBUG << "cuMemRelease() failed. result = "
@@ -256,6 +256,7 @@ _queryCudaPtr(const void *address, memory_t &type, int &outOrdinal, CUcontext &n
         break;
     case CU_MEMORYTYPE_HOST:
         type = MEM_HOST;
+        break;
     case CU_MEMORYTYPE_ARRAY:
         NIXL_ERROR << "CU_MEMORYTYPE_ARRAY memory type is not supported";
         return NIXL_ERR_INVALID_PARAM;
