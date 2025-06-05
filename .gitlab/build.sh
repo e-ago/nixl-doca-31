@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # set -e
-set -x
+# set -x
 
 # Parse commandline arguments with first argument being the install directory
 # and second argument being the UCX installation directory.
