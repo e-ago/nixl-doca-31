@@ -31,6 +31,9 @@ if [ -z "$UCX_INSTALL_DIR" ]; then
     UCX_INSTALL_DIR=$INSTALL_DIR
 fi
 
+ARCH=$(uname -m)
+[ "$ARCH" = "arm64" ] && ARCH="aarch64"
+
 apt-get -qq update
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.86.0
@@ -94,11 +97,11 @@ curl -fSsL "https://github.com/openucx/ucx/tarball/v1.18.0" | tar xz
 )
 
 export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/cuda/lib64
-export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/x86_64-linux-gnu:${INSTALL_DIR}/lib64:$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:${INSTALL_DIR}/lib
+export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/$ARCH-linux-gnu:${INSTALL_DIR}/lib64:$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:${INSTALL_DIR}/lib
 export CPATH=${INSTALL_DIR}/include:$CPATH
 export PATH=${INSTALL_DIR}/bin:$PATH
 export PKG_CONFIG_PATH=${INSTALL_DIR}/lib/pkgconfig:${INSTALL_DIR}/lib64/pkgconfig:${INSTALL_DIR}:$PKG_CONFIG_PATH
-export NIXL_PLUGIN_DIR=${INSTALL_DIR}/lib/x86_64-linux-gnu/plugins
+export NIXL_PLUGIN_DIR=${INSTALL_DIR}/lib/$ARCH-linux-gnu/plugins
 # Disabling CUDA IPC not to use NVLINK, as it slows down local
 # UCX transfers and can cause contention with local collectives.
 export UCX_TLS=^cuda_ipc

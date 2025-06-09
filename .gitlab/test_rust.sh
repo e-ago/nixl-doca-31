@@ -25,6 +25,9 @@ if [ -z "$INSTALL_DIR" ]; then
     exit 1
 fi
 
+ARCH=$(uname -m)
+[ "$ARCH" = "arm64" ] && ARCH="aarch64"
+
 
 export PATH=$HOME/.cargo/bin:$PATH
 
@@ -32,13 +35,13 @@ which cargo
 
 cargo --version
 
-export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/x86_64-linux-gnu:${INSTALL_DIR}/lib/x86_64-linux-gnu/plugins:/usr/local/lib:${INSTALL_DIR}/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/$ARCH-linux-gnu:${INSTALL_DIR}/lib/$ARCH-linux-gnu/plugins:/usr/local/lib:${INSTALL_DIR}/lib64:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:/usr/local/cuda/lib64:/usr/local/cuda-12.8/compat:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/compat/lib.real:$LD_LIBRARY_PATH
 export CPATH=${INSTALL_DIR}/include:$CPATH
 export PATH=${INSTALL_DIR}/bin:$PATH
 export PKG_CONFIG_PATH=${INSTALL_DIR}/lib64/pkgconfig:${INSTALL_DIR}/lib:${UCX_INSTALL_DIR}/lib/pkgconfig:$PKG_CONFIG_PATH
-export NIXL_PLUGIN_DIR=${INSTALL_DIR}/lib/x86_64-linux-gnu/plugins
+export NIXL_PLUGIN_DIR=${INSTALL_DIR}/lib/$ARCH-linux-gnu/plugins
 export NIXL_PREFIX=${INSTALL_DIR}
 
 cargo test -- --test-threads=1
