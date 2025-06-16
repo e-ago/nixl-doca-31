@@ -14,6 +14,7 @@
 // limitations under the License.
 
 use super::*;
+use crate::descriptors::xfer::XferDescListHandle;
 
 /// A NIXL agent that can create backends and manage memory
 #[derive(Debug, Clone)]
@@ -326,6 +327,117 @@ impl Agent {
         }
     }
 
+    pub fn make_connection(&self, remote_agent: &str) -> Result<(), NixlError> {
+        let remote_agent = CString::new(remote_agent)?;
+        let status = unsafe {
+            nixl_capi_agent_make_connection(
+                self.inner.write().unwrap().handle.as_ptr(),
+                remote_agent.as_ptr(),
+                std::ptr::null_mut(),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => Ok(()),
+            NIXL_CAPI_ERROR_INVALID_PARAM => Err(NixlError::InvalidParam),
+            _ => Err(NixlError::BackendError),
+        }
+    }
+
+    pub fn prep_xfer_dlist(&self, agent_name: &str, descs: &XferDescList, handle: &mut XferDescListHandle,
+                           opt_args: &OptArgs) -> Result<(), NixlError> {
+        let agent_name = CString::new(agent_name)?;
+        let status = unsafe {
+            nixl_capi_agent_prep_xfer_dlist(
+                self.inner.write().unwrap().handle.as_ptr(),
+                agent_name.as_ptr(),
+                descs.as_ptr(),
+                handle.as_ptr(),
+                opt_args.inner.as_ptr(),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => Ok(()),
+            NIXL_CAPI_ERROR_INVALID_PARAM => Err(NixlError::InvalidParam),
+            _ => Err(NixlError::BackendError),
+        }
+    }
+
+    pub fn make_xfer_req(&self, operation: XferOp, local_descs: &XferDescList, remote_descs: &XferDescList, remote_agent: &str, opt_args: &OptArgs) -> Result<XferRequest, NixlError> {
+        let remote_agent = CString::new(remote_agent)?;
+        let mut req = std::ptr::null_mut();
+
+        let status = unsafe {
+            nixl_capi_agent_make_xfer_req(
+                self.inner.write().unwrap().handle.as_ptr(),
+                operation as bindings::nixl_capi_xfer_op_t,
+                local_descs.as_ptr(),
+                remote_descs.as_ptr(),
+                remote_agent.as_ptr(),
+                &mut req,
+                opt_args.inner.as_ptr(),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => {
+                let inner = NonNull::new(req).ok_or(NixlError::FailedToCreateXferRequest)?;
+                Ok(XferRequest::new(inner, self.inner.clone()))
+            }
+            NIXL_CAPI_ERROR_INVALID_PARAM => Err(NixlError::InvalidParam),
+            _ => Err(NixlError::BackendError),
+        }
+    }
+
+    /// Check if remote metadata for a specific agent is available
+    ///
+    /// This function checks if the metadata for the specified remote agent has been
+    /// loaded and if specific descriptors can be found in the metadata.
+    ///
+    /// # Arguments
+    /// * `remote_agent` - Name of the remote agent to check
+    /// * `descs` - Optional descriptor list to check against the remote metadata.
+    ///            If None, only checks if any metadata exists for the agent.
+    ///
+    /// # Returns
+    /// `true` if the remote agent's metadata is available (and descriptors are found if provided),
+    /// `false` otherwise
+    pub fn check_remote_metadata(&self, remote_agent: &str, descs: Option<&XferDescList>) -> bool {
+        tracing::trace!(remote_agent = %remote_agent, "Checking remote metadata");
+
+        let c_remote_name = match CString::new(remote_agent) {
+            Ok(name) => name,
+            Err(_) => {
+                tracing::trace!(
+                    error = "invalid_param",
+                    remote_agent = %remote_agent,
+                    "Invalid remote agent name"
+                );
+                return false;
+            }
+        };
+
+        let status = unsafe {
+            bindings::nixl_capi_check_remote_md(
+                self.inner.read().unwrap().handle.as_ptr(),
+                c_remote_name.as_ptr(),
+                descs.map_or(std::ptr::null_mut(), |d| d.as_ptr()),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => {
+                tracing::trace!(remote_agent = %remote_agent, "Remote metadata is available");
+                true
+            }
+            _ => {
+                tracing::trace!(remote_agent = %remote_agent, "Remote metadata is not available");
+                false
+            }
+        }
+    }
+
     /// Invalidates a remote metadata for this agent
     pub fn invalidate_remote_md(&self, remote_agent: &str) -> Result<(), NixlError> {
         self.inner
@@ -337,6 +449,193 @@ impl Agent {
     /// Invalidates all remote metadata for this agent
     pub fn invalidate_all_remotes(&self) -> Result<(), NixlError> {
         self.inner.write().unwrap().invalidate_all_remotes()
+    }
+
+     /// Fetch a remote agent's metadata from etcd
+    ///
+    /// Once fetched, the metadata will be loaded and cached locally, enabling
+    /// communication with the remote agent.
+    ///
+    /// # Arguments
+    /// * `remote_name` - Name of the remote agent to fetch metadata for
+    /// * `opt_args` - Optional arguments for fetching metadata
+    pub fn fetch_remote_md(
+        &self,
+        remote_name: &str,
+        opt_args: Option<&OptArgs>,
+    ) -> Result<(), NixlError> {
+        tracing::trace!(remote_agent = %remote_name, "Fetching remote metadata from etcd");
+
+        let c_remote_name = CString::new(remote_name)?;
+        let status = unsafe {
+            bindings::nixl_capi_fetch_remote_md(
+                self.inner.write().unwrap().handle.as_ptr(),
+                c_remote_name.as_ptr(),
+                opt_args.map_or(std::ptr::null_mut(), |args| args.inner.as_ptr()),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => {
+                self.inner
+                    .write()
+                    .unwrap()
+                    .remotes
+                    .insert(remote_name.to_string());
+                tracing::trace!(remote_agent = %remote_name, "Successfully fetched remote metadata from etcd");
+                Ok(())
+            }
+            NIXL_CAPI_ERROR_INVALID_PARAM => {
+                tracing::trace!(error = "invalid_param", remote_agent = %remote_name, "Failed to fetch remote metadata from etcd");
+                Err(NixlError::InvalidParam)
+            }
+            _ => {
+                tracing::trace!(error = "backend_error", remote_agent = %remote_name, "Failed to fetch remote metadata from etcd");
+                Err(NixlError::BackendError)
+            }
+        }
+    }
+
+    /// Invalidate this agent's metadata in etcd
+    ///
+    /// This signals to other agents that this agent's metadata is no longer valid.
+    ///
+    /// # Arguments
+    /// * `opt_args` - Optional arguments for invalidating metadata
+    pub fn invalidate_local_md(&self, opt_args: Option<&OptArgs>) -> Result<(), NixlError> {
+        tracing::trace!("Invalidating local metadata in etcd");
+        let status = unsafe {
+            bindings::nixl_capi_invalidate_local_md(
+                self.inner.write().unwrap().handle.as_ptr(),
+                opt_args.map_or(std::ptr::null_mut(), |args| args.inner.as_ptr()),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => {
+                tracing::trace!("Successfully invalidated local metadata in etcd");
+                Ok(())
+            }
+            NIXL_CAPI_ERROR_INVALID_PARAM => {
+                tracing::trace!(
+                    error = "invalid_param",
+                    "Failed to invalidate local metadata in etcd"
+                );
+                Err(NixlError::InvalidParam)
+            }
+            _ => {
+                tracing::trace!(
+                    error = "backend_error",
+                    "Failed to invalidate local metadata in etcd"
+                );
+                Err(NixlError::BackendError)
+            }
+        }
+    }
+
+    // /// Check if remote metadata for a specific agent is available
+    // ///
+    // /// This function checks if the metadata for the specified remote agent has been
+    // /// loaded and if specific descriptors can be found in the metadata.
+    // ///
+    // /// # Arguments
+    // /// * `remote_agent` - Name of the remote agent to check
+    // /// * `descs` - Optional descriptor list to check against the remote metadata.
+    // ///            If None, only checks if any metadata exists for the agent.
+    // ///
+    // /// # Returns
+    // /// `true` if the remote agent's metadata is available (and descriptors are found if provided),
+    // /// `false` otherwise
+    // pub fn check_remote_metadata(&self, remote_agent: &str, descs: Option<&XferDescList>) -> bool {
+    //     tracing::trace!(remote_agent = %remote_agent, "Checking remote metadata");
+
+    //     let c_remote_name = match CString::new(remote_agent) {
+    //         Ok(name) => name,
+    //         Err(_) => {
+    //             tracing::trace!(
+    //                 error = "invalid_param",
+    //                 remote_agent = %remote_agent,
+    //                 "Invalid remote agent name"
+    //             );
+    //             return false;
+    //         }
+    //     };
+
+    //     let status = unsafe {
+    //         bindings::nixl_capi_check_remote_md(
+    //             self.inner.read().unwrap().handle.as_ptr(),
+    //             c_remote_name.as_ptr(),
+    //             descs.map_or(std::ptr::null_mut(), |d| d.as_ptr()),
+    //         )
+    //     };
+
+    //     match status {
+    //         NIXL_CAPI_SUCCESS => {
+    //             tracing::trace!(remote_agent = %remote_agent, "Remote metadata is available");
+    //             true
+    //         }
+    //         _ => {
+    //             tracing::trace!(remote_agent = %remote_agent, "Remote metadata is not available");
+    //             false
+    //         }
+    //     }
+    // }
+
+    /// Send a notification to a remote agent
+    ///
+    /// # Arguments
+    /// * `remote_agent` - Name of the remote agent to send notification to
+    /// * `message` - The notification message to send
+    /// * `backend` - Optional backend to use for sending the notification
+    ///
+    /// # Returns
+    /// `Ok(())` if the notification was sent successfully
+    pub fn send_notification(
+        &self,
+        remote_agent: &str,
+        message: &[u8],
+        backend: Option<&Backend>,
+    ) -> Result<(), NixlError> {
+        tracing::trace!(remote_agent = %remote_agent, "Sending notification");
+
+        let c_remote_name = CString::new(remote_agent)?;
+
+        let opt_args = if backend.is_some() {
+            let mut args = OptArgs::new()?;
+            if let Some(b) = backend {
+                args.add_backend(b)?;
+            }
+            Some(args)
+        } else {
+            None
+        };
+
+        let status = unsafe {
+            nixl_capi_gen_notif(
+                self.inner.write().unwrap().handle.as_ptr(),
+                c_remote_name.as_ptr(),
+                message.as_ptr() as *const std::ffi::c_void,
+                message.len(),
+                opt_args
+                    .as_ref()
+                    .map_or(std::ptr::null_mut(), |args| args.inner.as_ptr()),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => {
+                tracing::trace!(remote_agent = %remote_agent, "Successfully sent notification");
+                Ok(())
+            }
+            NIXL_CAPI_ERROR_INVALID_PARAM => {
+                tracing::trace!(error = "invalid_param", remote_agent = %remote_agent, "Failed to send notification");
+                Err(NixlError::InvalidParam)
+            }
+            _ => {
+                tracing::trace!(error = "backend_error", remote_agent = %remote_agent, "Failed to send notification");
+                Err(NixlError::BackendError)
+            }
+        }
     }
 
     /// Creates a transfer request between local and remote descriptors

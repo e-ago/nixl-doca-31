@@ -15,8 +15,8 @@
 
 use super::*;
 
-mod reg;
-mod xfer;
+pub mod reg;
+pub mod xfer;
 
 pub use reg::RegDescList;
 pub use xfer::XferDescList;
