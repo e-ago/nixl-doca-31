@@ -40,6 +40,9 @@ else
     SUDO=""
 fi
 
+# Some docker images are with broken installations:
+$SUDO rm -rf /usr/lib/cmake/grpc /usr/lib/cmake/protobuf
+
 $SUDO apt-get -qq update
 $SUDO apt-get -qq install -y curl \
                              libnuma-dev \
@@ -104,7 +107,7 @@ curl -fSsL "https://github.com/openucx/ucx/tarball/${UCX_VERSION}" | tar xz
   git clone https://github.com/etcd-cpp-apiv3/etcd-cpp-apiv3.git && \
   cd etcd-cpp-apiv3 && \
   mkdir build && cd build && \
-  cmake -DCMAKE_IGNORE_PATH="/lib/cmake/protobuf;/usr/lib/cmake/protobuf" .. && \
+  cmake .. && \
   make -j$(nproc) && \
   make install && \
   ldconfig \
@@ -115,6 +118,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/li
 export CPATH=${INSTALL_DIR}/include:$CPATH
 export PATH=${INSTALL_DIR}/bin:$PATH
 export PKG_CONFIG_PATH=${INSTALL_DIR}/lib/pkgconfig:$PKG_CONFIG_PATH
+export CMAKE_PREFIX_PATH=${INSTALL_DIR}:${CMAKE_PREFIX_PATH}
 
 # Disabling CUDA IPC not to use NVLINK, as it slows down local
 # UCX transfers and can cause contention with local collectives.
