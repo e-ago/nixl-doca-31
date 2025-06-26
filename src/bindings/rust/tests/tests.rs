@@ -20,9 +20,7 @@
 //! `nixl` crate.
 
 use nixl_sys::*;
-use nixl_sys::descriptors::xfer::XferDescListHandle;
 use std::env;
-use std::time::Duration;
 
 // Helper function to create an agent with error handling
 fn create_test_agent(name: &str) -> Result<Agent, NixlError> {

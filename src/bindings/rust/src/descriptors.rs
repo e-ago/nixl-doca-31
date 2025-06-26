@@ -19,7 +19,7 @@ pub mod reg;
 pub mod xfer;
 
 pub use reg::RegDescList;
-pub use xfer::XferDescList;
+pub use xfer::{XferDescList, XferDescListHandle};
 
 /// Memory types supported by NIXL
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

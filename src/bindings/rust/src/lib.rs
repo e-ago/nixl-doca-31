@@ -89,6 +89,7 @@ mod xfer;
 pub use agent::*;
 pub use descriptors::*;
 pub use notify::*;
+pub use utils::*;
 pub use xfer::*;
 
 /// Errors that can occur when using NIXL
