@@ -451,7 +451,44 @@ impl Agent {
         self.inner.write().unwrap().invalidate_all_remotes()
     }
 
-     /// Fetch a remote agent's metadata from etcd
+    /// Send this agent's metadata to etcdAdd commentMore actions
+    ///
+    /// This enables other agents to discover this agent's metadata via etcd.
+    ///
+    /// # Arguments
+    /// * `opt_args` - Optional arguments for sending metadata
+    pub fn send_local_md(&self, opt_args: Option<&OptArgs>) -> Result<(), NixlError> {
+        tracing::trace!("Sending local metadata to etcd");
+        let status = unsafe {
+            bindings::nixl_capi_send_local_md(
+                self.inner.write().unwrap().handle.as_ptr(),
+                opt_args.map_or(std::ptr::null_mut(), |args| args.inner.as_ptr()),
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => {
+                tracing::trace!("Successfully sent local metadata to etcd");
+                Ok(())
+            }
+            NIXL_CAPI_ERROR_INVALID_PARAM => {
+                tracing::trace!(
+                    error = "invalid_param",
+                    "Failed to send local metadata to etcd"
+                );
+                Err(NixlError::InvalidParam)
+            }
+            _ => {
+                tracing::trace!(
+                    error = "backend_error",
+                    "Failed to send local metadata to etcd"
+                );
+                Err(NixlError::BackendError)
+            }
+        }
+    }
+
+    /// Fetch a remote agent's metadata from etcd
     ///
     /// Once fetched, the metadata will be loaded and cached locally, enabling
     /// communication with the remote agent.
