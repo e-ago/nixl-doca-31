@@ -20,8 +20,25 @@
 //! `nixl` crate.
 
 use nixl_sys::*;
+use nixl_sys::descriptors::xfer::XferDescListHandle;
 use std::env;
 use std::time::Duration;
+
+// Helper function to create an agent with error handling
+fn create_test_agent(name: &str) -> Result<Agent, NixlError> {
+    Agent::new(name)
+}
+
+// Helper function to find a plugin by name
+fn find_plugin(plugins: &StringList, name: &str) -> Result<String, NixlError> {
+    plugins
+        .iter()
+        .filter_map(Result::ok)
+        .find(|&plugin| plugin == name)
+        .map(ToString::to_string)
+        .or_else(|| plugins.get(0).ok().map(ToString::to_string))
+        .ok_or(NixlError::InvalidParam)
+}
 
 #[test]
 fn test_agent_creation() {
