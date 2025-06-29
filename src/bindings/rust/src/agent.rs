@@ -699,7 +699,7 @@ impl Agent {
         let status = unsafe {
             nixl_capi_estimate_xfer_cost(
                 self.inner.write().unwrap().handle.as_ptr(),
-                req.inner.as_ptr(),
+                req.handle(),
                 opt_args.map_or(ptr::null_mut(), |args| args.inner.as_ptr()),
                 &mut duration_us,
                 &mut err_margin_us,
