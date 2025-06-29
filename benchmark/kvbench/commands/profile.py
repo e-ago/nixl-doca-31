@@ -22,7 +22,7 @@ from models.model_config import ModelConfig
 from models.models import BaseModelArch
 from models.utils import get_batch_size, override_yaml_args
 
-# Configure logging  
+# Configure logging
 logger = logging.getLogger(__name__)
 
 

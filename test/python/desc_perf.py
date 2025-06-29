@@ -39,6 +39,7 @@ if __name__ == "__main__":
     assert descs.descCount() == desc_count
 
     logger.info(
-        "Time per desc add in us: %f", (1000000.0 * (end_time - start_time)) / desc_count
+        "Time per desc add in us: %f",
+        (1000000.0 * (end_time - start_time)) / desc_count,
     )
     nixl_utils.free_passthru(addr)

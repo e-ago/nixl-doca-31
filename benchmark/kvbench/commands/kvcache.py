@@ -102,7 +102,9 @@ class Command:
         max_width = max(len(label) for label in labels)
         io_size = model.get_io_size(model_config.system.page_size)
         batch_size = get_batch_size(model, model_config, io_size)
-        logger.info("%s: %s", 'Model'.ljust(max_width), model.model)
-        logger.info("%s: %s", 'Input Sequence Length'.ljust(max_width), model_config.runtime.isl)
-        logger.info("%s: %s", 'Batch Size'.ljust(max_width), batch_size)
-        logger.info("%s: %s", 'IO Size'.ljust(max_width), format_bytes(io_size))
+        logger.info("%s: %s", "Model".ljust(max_width), model.model)
+        logger.info(
+            "%s: %s", "Input Sequence Length".ljust(max_width), model_config.runtime.isl
+        )
+        logger.info("%s: %s", "Batch Size".ljust(max_width), batch_size)
+        logger.info("%s: %s", "IO Size".ljust(max_width), format_bytes(io_size))

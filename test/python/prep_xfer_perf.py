@@ -148,7 +148,9 @@ if __name__ == "__main__":
     num_descs = 2**20
     length = 64
     addr_base = nixl_utils.malloc_passthru(num_descs * length)
-    logger.info("Performance test: Creating nixlXferDList with %d descriptors", num_descs)
+    logger.info(
+        "Performance test: Creating nixlXferDList with %d descriptors", num_descs
+    )
 
     if args.mode == "list":
         perf_test_list(num_descs, addr_base, length)

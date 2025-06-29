@@ -22,9 +22,9 @@ import nixl._utils as nixl_utils
 from nixl._api import nixl_agent, nixl_agent_config
 from nixl._bindings import nixlNotFoundError
 
-
 # Configure logging
 logger = logging.getLogger(__name__)
+
 
 def exchange_target_metadata(
     target_agent,

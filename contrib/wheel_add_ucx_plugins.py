@@ -27,8 +27,7 @@ import zipfile
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -206,7 +205,9 @@ def add_ucx_plugins(wheel_path, ucx_sys_lib_dir):
                 base_name = libname.split(".")[0]
                 if base_name in name_map:
                     packaged_name = name_map[base_name]
-                    logger.debug("Replacing %s with %s in %s", libname, packaged_name, fpath)
+                    logger.debug(
+                        "Replacing %s with %s in %s", libname, packaged_name, fpath
+                    )
                     ret = os.system(
                         f"patchelf --replace-needed {libname} {packaged_name} {fpath}"
                     )

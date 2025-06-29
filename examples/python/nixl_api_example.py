@@ -70,7 +70,9 @@ if __name__ == "__main__":
 
     assert agent1_xfer_descs == agent1_xfer_descs_np
     assert agent1_reg_descs == agent1_reg_descs_np
-    logger.debug("Registration descriptors: %s %s", agent1_reg_descs, agent1_reg_descs_np)
+    logger.debug(
+        "Registration descriptors: %s %s", agent1_reg_descs, agent1_reg_descs_np
+    )
 
     # Just for tensor test
     tensors = [torch.zeros(10, dtype=torch.float32) for _ in range(2)]

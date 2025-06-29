@@ -24,8 +24,7 @@ import nixl._bindings as nixlBind
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -176,7 +175,9 @@ class nixl_agent:
         if backend in self.plugin_mem_types:
             return self.plugin_mem_types[backend]
         else:
-            logger.warning("Plugin %s is not available to get its supported mem types.", backend)
+            logger.warning(
+                "Plugin %s is not available to get its supported mem types.", backend
+            )
             return []
 
     """
@@ -209,8 +210,7 @@ class nixl_agent:
             return self.backend_mems[backend]
         else:
             logger.warning(
-                "Backend %s not instantiated to get its supported mem types.",
-                backend
+                "Backend %s not instantiated to get its supported mem types.", backend
             )
             return []
 
@@ -228,7 +228,9 @@ class nixl_agent:
         if backend in self.backend_options:
             return self.backend_options[backend]
         else:
-            logger.warning("Backend %s not instantiated to get its parameters.", backend)
+            logger.warning(
+                "Backend %s not instantiated to get its parameters.", backend
+            )
             return {}
 
     """
