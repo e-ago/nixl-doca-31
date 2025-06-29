@@ -570,54 +570,6 @@ impl Agent {
         }
     }
 
-    // /// Check if remote metadata for a specific agent is available
-    // ///
-    // /// This function checks if the metadata for the specified remote agent has been
-    // /// loaded and if specific descriptors can be found in the metadata.
-    // ///
-    // /// # Arguments
-    // /// * `remote_agent` - Name of the remote agent to check
-    // /// * `descs` - Optional descriptor list to check against the remote metadata.
-    // ///            If None, only checks if any metadata exists for the agent.
-    // ///
-    // /// # Returns
-    // /// `true` if the remote agent's metadata is available (and descriptors are found if provided),
-    // /// `false` otherwise
-    // pub fn check_remote_metadata(&self, remote_agent: &str, descs: Option<&XferDescList>) -> bool {
-    //     tracing::trace!(remote_agent = %remote_agent, "Checking remote metadata");
-
-    //     let c_remote_name = match CString::new(remote_agent) {
-    //         Ok(name) => name,
-    //         Err(_) => {
-    //             tracing::trace!(
-    //                 error = "invalid_param",
-    //                 remote_agent = %remote_agent,
-    //                 "Invalid remote agent name"
-    //             );
-    //             return false;
-    //         }
-    //     };
-
-    //     let status = unsafe {
-    //         bindings::nixl_capi_check_remote_md(
-    //             self.inner.read().unwrap().handle.as_ptr(),
-    //             c_remote_name.as_ptr(),
-    //             descs.map_or(std::ptr::null_mut(), |d| d.as_ptr()),
-    //         )
-    //     };
-
-    //     match status {
-    //         NIXL_CAPI_SUCCESS => {
-    //             tracing::trace!(remote_agent = %remote_agent, "Remote metadata is available");
-    //             true
-    //         }
-    //         _ => {
-    //             tracing::trace!(remote_agent = %remote_agent, "Remote metadata is not available");
-    //             false
-    //         }
-    //     }
-    // }
-
     /// Send a notification to a remote agent
     ///
     /// # Arguments
@@ -721,6 +673,44 @@ impl Agent {
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => Err(NixlError::InvalidParam),
             _ => Err(NixlError::FailedToCreateXferRequest),
+        }
+    }
+
+    /// Estimates the cost of a transfer request
+    ///
+    /// # Arguments
+    /// * `req` - Transfer request handle
+    /// * `opt_args` - Optional arguments for the estimation
+    ///
+    /// # Returns
+    /// A tuple containing (duration in microseconds, error margin in microseconds, cost method)
+    ///
+    /// # Errors
+    /// Returns a NixlError if the operation fails
+    pub fn estimate_xfer_cost(
+        &self,
+        req: &XferRequest,
+        opt_args: Option<&OptArgs>,
+    ) -> Result<(i64, i64, CostMethod), NixlError> {
+        let mut duration_us: i64 = 0;
+        let mut err_margin_us: i64 = 0;
+        let mut method: u32 = 0;
+
+        let status = unsafe {
+            nixl_capi_estimate_xfer_cost(
+                self.inner.write().unwrap().handle.as_ptr(),
+                req.inner.as_ptr(),
+                opt_args.map_or(ptr::null_mut(), |args| args.inner.as_ptr()),
+                &mut duration_us,
+                &mut err_margin_us,
+                &mut method as *mut u32 as *mut bindings::nixl_capi_cost_t,
+            )
+        };
+
+        match status {
+            NIXL_CAPI_SUCCESS => Ok((duration_us, err_margin_us, CostMethod::from(method))),
+            NIXL_CAPI_ERROR_INVALID_PARAM => Err(NixlError::InvalidParam),
+            _ => Err(NixlError::BackendError),
         }
     }
 
