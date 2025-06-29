@@ -68,7 +68,7 @@ use bindings::{
     nixl_capi_xfer_dlist_get_type, nixl_capi_xfer_dlist_verify_sorted, nixl_capi_xfer_dlist_desc_count,
     nixl_capi_xfer_dlist_is_sorted, nixl_capi_xfer_dlist_trim, nixl_capi_xfer_dlist_rem_desc,
     nixl_capi_xfer_dlist_print, nixl_capi_create_xfer_dlist_handle, nixl_capi_destroy_xfer_dlist_handle,
-    nixl_capi_reg_dlist_is_sorted, nixl_capi_gen_notif,
+    nixl_capi_reg_dlist_is_sorted, nixl_capi_gen_notif, nixl_capi_estimate_xfer_cost,
 
 };
 
