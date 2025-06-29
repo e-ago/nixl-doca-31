@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# set -e
-# set -x
+set -e
+set -x
 
 # Parse commandline arguments with first argument being the install directory.
 INSTALL_DIR=$1

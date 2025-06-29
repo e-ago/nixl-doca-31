@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# set -e
-# set -x
+set -e
+set -x
 TEXT_YELLOW="\033[1;33m"
 TEXT_CLEAR="\033[0m"
 
