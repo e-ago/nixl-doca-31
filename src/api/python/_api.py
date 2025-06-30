@@ -20,7 +20,7 @@ import numpy as np
 import torch
 
 import nixl._bindings as nixlBind
-from nixl_logging import get_logger
+from nixl.logging import get_logger
 
 # Get logger using centralized configuration
 logger = get_logger(__name__)

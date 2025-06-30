@@ -22,7 +22,9 @@ import torch
 
 import nixl._utils as nixl_utils
 from nixl._api import nixl_agent, nixl_agent_config
-from nixl_logging import get_logger
+
+from nixl.logging import get_logger
+
 
 # Configure logging
 logger = get_logger(__name__)

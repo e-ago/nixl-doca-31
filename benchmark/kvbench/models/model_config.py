@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore
 
-from nixl_logging import get_logger
+from nixl.logging import get_logger
 
 logger = get_logger(__name__)
 

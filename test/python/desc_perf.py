@@ -19,7 +19,7 @@ import time
 
 import nixl._utils as nixl_utils
 from nixl._api import nixl_agent
-from nixl_logging import get_logger
+from nixl.logging import get_logger
 
 logger = get_logger(__name__)
 

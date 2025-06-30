@@ -24,7 +24,7 @@ import shutil
 import tempfile
 import zipfile
 
-from nixl_logging import get_logger
+from nixl.logging import get_logger
 
 logger = get_logger(__name__)
 
