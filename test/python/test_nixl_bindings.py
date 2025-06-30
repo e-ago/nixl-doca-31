@@ -18,7 +18,6 @@ import pickle
 
 import nixl._bindings as nixl
 import nixl._utils as nixl_utils
-
 from nixl_logging import get_logger
 
 logger = get_logger(__name__)
