@@ -21,12 +21,10 @@ import numpy as np
 import torch
 
 import nixl._bindings as nixlBind
+from nixl_logging import get_logger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Get logger using centralized configuration
+logger = get_logger(__name__)
 
 DEFAULT_COMM_PORT = nixlBind.DEFAULT_COMM_PORT
 

@@ -21,11 +21,9 @@ from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+from nixl_logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass

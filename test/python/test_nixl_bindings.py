@@ -19,11 +19,9 @@ import pickle
 import nixl._bindings as nixl
 import nixl._utils as nixl_utils
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+from nixl_logging import get_logger
+
+logger = get_logger(__name__)
 
 # These should automatically be run by pytest because of function names
 
