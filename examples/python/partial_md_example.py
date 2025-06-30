@@ -15,15 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import os
 
 import nixl._utils as nixl_utils
 from nixl._api import nixl_agent, nixl_agent_config
 from nixl._bindings import nixlNotFoundError
 
+from nixl_logging import get_logger
+
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def exchange_target_metadata(
