@@ -18,7 +18,6 @@ import csv
 import glob
 import io
 import json
-import logging
 import os
 
 from commands.args import (
@@ -31,9 +30,9 @@ from commands.nixlbench import NIXLBench
 from models.model_config import ModelConfig
 from models.models import BaseModelArch
 from models.utils import get_batch_size, override_yaml_args
+from nixl_logging import get_logger
 
-# Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class Command:

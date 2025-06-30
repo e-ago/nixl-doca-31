@@ -14,14 +14,13 @@
 # limitations under the License.
 
 import argparse
-import logging
 
 from commands.args import add_common_args
 from models.model_config import ModelConfig
 from models.models import BaseModelArch
+from nixl_logging import get_logger
 
-# Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class Command:

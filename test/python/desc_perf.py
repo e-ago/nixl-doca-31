@@ -15,13 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import time
 
 import nixl._utils as nixl_utils
 from nixl._api import nixl_agent
+from nixl_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 if __name__ == "__main__":
     desc_count = 24 * 64 * 1024

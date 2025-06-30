@@ -19,7 +19,6 @@ import argparse
 import base64
 import csv
 import hashlib
-import logging
 import os
 import shutil
 import tempfile
