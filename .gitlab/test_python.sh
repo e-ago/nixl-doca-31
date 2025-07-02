@@ -51,7 +51,6 @@ python3 test/python/prep_xfer_perf.py list
 python3 test/python/prep_xfer_perf.py array
 
 echo "==== Running python example ===="
-# cd examples/python
 python3 examples/python/blocking_send_recv_example.py --mode="target" --ip=127.0.0.1 --port=1234&
 sleep 5
 python3 examples/python/blocking_send_recv_example.py --mode="initiator" --ip=127.0.0.1 --port=1234

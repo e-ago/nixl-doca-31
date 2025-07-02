@@ -165,9 +165,6 @@ fn build_nixl(cc_builder: &mut cc::Build) {
 
     // Link against required libraries
     println!("cargo:rustc-link-lib=stdc++");
-    // println!("cargo:rustc-link-lib=dylib=stream");
-    // println!("cargo:rustc-link-lib=dylib=serdes");
-    // println!("cargo:rustc-link-lib=dylib=ucx_utils");
 
     // Add NIXL libraries
     println!("cargo:rustc-link-lib=dylib=nixl");
