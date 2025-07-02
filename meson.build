@@ -28,6 +28,13 @@ dl_dep = cpp.find_library('dl', required: true)
 rt_dep = cpp.find_library('rt', required: true)
 thread_dep = dependency('threads')
 
+# Check for libaio (for POSIX plugin and test)
+aio_dep = cpp.find_library('aio', required: false)
+posix_aio = false
+if aio_dep.found()
+    posix_aio = cpp.has_function('aio_cancel', prefix: '#include <aio.h>')
+endif
+
 # Forced to ignore this error due to:
 # https://github.com/abseil/abseil-cpp/issues/1779
 # This must be global since subprojects cannot be assigned with arguments.
@@ -37,6 +44,7 @@ if get_option('buildtype') == 'release'
   add_global_arguments(abseil_flags, language: 'cpp')
 endif
 abseil_proj = subproject('abseil-cpp')
+taskflow_proj = dependency('taskflow', fallback: ['taskflow', 'taskflow_dep'])
 
 cuda_inc_path = get_option('cudapath_inc')
 cuda_lib_path = get_option('cudapath_lib')
@@ -118,7 +126,6 @@ endif
 if get_option('disable_gds_backend')
     add_project_arguments('-DDISABLE_GDS_BACKEND', language: 'cpp')
 endif
-
 
 # Configure NDEBUG for release builds
 if get_option('buildtype') == 'release'

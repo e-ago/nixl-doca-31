@@ -26,6 +26,9 @@ license.workspace = true
 repository.workspace = true
 readme.workspace = true
 
+[features]
+stub-api = []
+
 [dependencies]
 thiserror = { version = "2" }
 tracing = { version = "0.1" }
