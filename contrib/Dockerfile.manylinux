@@ -116,8 +116,8 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     RUSTARCH=${ARCH}-unknown-linux-gnu
 
 RUN case "$ARCH" in \
-      amd64) export RUSTUP_HASH="a3339fb004c3d0bb9862ba0bce001861fe5cbde9c10d16591eb3f39ee6cd3e7f" ;; \
-      arm64) export RUSTUP_HASH="c64b33db2c6b9385817ec0e49a84bcfe018ed6e328fe755c3c809580cc70ce7a" ;; \
+      x86_64) RUSTUP_HASH="a3339fb004c3d0bb9862ba0bce001861fe5cbde9c10d16591eb3f39ee6cd3e7f" ;; \
+      aarch64) RUSTUP_HASH="c64b33db2c6b9385817ec0e49a84bcfe018ed6e328fe755c3c809580cc70ce7a" ;; \
       *) echo "Unsupported arch: $ARCH" && exit 1 ;; \
     esac && \
     wget --tries=3 --waitretry=5 "$RUSTUP_URL" -O rustup-init && \
