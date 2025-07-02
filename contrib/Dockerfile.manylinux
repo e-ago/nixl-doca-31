@@ -115,12 +115,19 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     RUST_VERSION=1.86.0 \
     RUSTARCH=${ARCH}-unknown-linux-gnu
 
-RUN wget --tries=3 --waitretry=5 "https://static.rust-lang.org/rustup/archive/1.28.1/${RUSTARCH}/rustup-init" && \
-    echo "a3339fb004c3d0bb9862ba0bce001861fe5cbde9c10d16591eb3f39ee6cd3e7f *rustup-init" | sha256sum -c - && \
+RUN case "$ARCH" in \
+      amd64) export RUSTUP_HASH="a3339fb004c3d0bb9862ba0bce001861fe5cbde9c10d16591eb3f39ee6cd3e7f" ;; \
+      arm64) export RUSTUP_HASH="c64b33db2c6b9385817ec0e49a84bcfe018ed6e328fe755c3c809580cc70ce7a" ;; \
+      *) echo "Unsupported arch: $ARCH" && exit 1 ;; \
+    esac && \
+    wget --tries=3 --waitretry=5 "$RUSTUP_URL" -O rustup-init && \
+    echo "$RUSTUP_HASH *rustup-init" | sha256sum -c - && \
     chmod +x rustup-init && \
-    ./rustup-init -y --no-modify-path --profile minimal --default-toolchain $RUST_VERSION --default-host ${RUSTARCH} && \
+    ./rustup-init -y --no-modify-path --profile minimal \
+      --default-toolchain ${RUST_VERSION} \
+      --default-host ${ARCH}-unknown-linux-gnu && \
     rm rustup-init && \
-    chmod -R a+w $RUSTUP_HOME $CARGO_HOME
+    chmod -R a+w /usr/local/rustup /usr/local/cargo
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
