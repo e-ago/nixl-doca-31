@@ -63,7 +63,7 @@ RUN cd /tmp && \
     tar -xzf openssl-3.0.16.tar.gz && \
     cd openssl-3.0.16 && \
     ./Configure --prefix=/usr/local/openssl3 --openssldir=/usr/local/openssl3 \
-        shared zlib linux-x86_64 && \
+        shared zlib linux-${ARCH} && \
     make -j$(nproc) && \
     make install_sw && \
     echo "/usr/local/openssl3/lib64" > /etc/ld.so.conf.d/openssl3.conf && \
@@ -139,7 +139,7 @@ RUN cd /workspace && \
     cd gdrcopy/packages && \
     CUDA=/usr/local/cuda ./build-rpm-packages.sh && \
     rpm -Uvh gdrcopy-kmod-2.5-1dkms.el8.noarch.rpm && \
-    rpm -Uvh gdrcopy-2.5-1.el8.x86_64.rpm && \
+    rpm -Uvh gdrcopy-2.5-1.el8.${ARCH}.rpm && \
     rpm -Uvh gdrcopy-devel-2.5-1.el8.noarch.rpm
 
 RUN cd /usr/local/src && \
