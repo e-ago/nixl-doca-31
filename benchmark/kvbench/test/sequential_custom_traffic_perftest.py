@@ -16,7 +16,6 @@
 """Sequential is different from multi in that every rank processes only one TP at a time, but they can process different ones"""
 
 import json
-import logging
 import time
 from collections import defaultdict
 from itertools import chain

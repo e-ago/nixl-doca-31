@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import os
 import pickle
 import re
@@ -23,9 +22,8 @@ from typing import Any, List, Optional
 
 import etcd3
 
-from nixl.logging import get_logger
-
 from .rt_base import ReduceOp, _RTUtils
+from nixl.logging import get_logger
 
 log = get_logger(__name__)
 

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import time
 from test.traffic_pattern import TrafficPattern
 from typing import Literal, Optional, Tuple
@@ -378,9 +377,7 @@ class CTPerftest:
                     total_size_gb,
                 ]
             ]
-            log.info(
-                f"Performance metrics:\n{tabulate(data, headers=headers, floatfmt='.6f')}"
-            )
+            log.info(f"Performance metrics:\n{tabulate(data, headers=headers, floatfmt='.6f')}")
 
         if verify_buffers:
             self._verify_tp(self.traffic_pattern, recv_bufs, print_recv_buffers)

@@ -22,10 +22,10 @@ Run multiple instances of this script to test distributed functionality
 import os
 import sys
 
+from nixl.logging import get_logger
+
 # Add the kvbench runtime path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../kvbench/runtime"))
-
-from nixl.logging import get_logger
 
 log = get_logger(__name__)
 
