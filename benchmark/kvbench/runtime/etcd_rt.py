@@ -23,8 +23,9 @@ from typing import Any, List, Optional
 
 import etcd3
 
-from .rt_base import ReduceOp, _RTUtils
 from nixl.logging import get_logger
+
+from .rt_base import ReduceOp, _RTUtils
 
 log = get_logger(__name__)
 
