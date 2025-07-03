@@ -377,7 +377,9 @@ class CTPerftest:
                     total_size_gb,
                 ]
             ]
-            log.info(f"Performance metrics:\n{tabulate(data, headers=headers, floatfmt='.6f')}")
+            log.info(
+                f"Performance metrics:\n{tabulate(data, headers=headers, floatfmt='.6f')}"
+            )
 
         if verify_buffers:
             self._verify_tp(self.traffic_pattern, recv_bufs, print_recv_buffers)

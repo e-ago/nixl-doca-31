@@ -17,6 +17,7 @@ from typing import ClassVar, Literal, Optional
 
 import numpy as np
 import torch
+
 from nixl.logging import get_logger
 
 log = get_logger(__name__)
