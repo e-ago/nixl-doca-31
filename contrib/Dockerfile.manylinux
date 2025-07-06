@@ -203,3 +203,5 @@ RUN uv pip install auditwheel && \
     contrib/wheel_add_ucx_plugins.py --ucx-lib-dir /usr/lib64 dist/*.whl
 
 RUN uv pip install dist/nixl-*cp${DEFAULT_PYTHON_VERSION//./}*.whl
+
+RUN uv pip install --break-system-packages .
