@@ -43,17 +43,19 @@ if __name__ == "__main__":
     plugin_list = nixl_agent1.get_plugin_list()
     assert "GDS" in plugin_list
 
-    logger.info("Plugin parameters:\n%s\n%s\n",
-                nixl_agent1.get_plugin_mem_types("GDS"),
-                nixl_agent1.get_plugin_params("GDS"),
-            )
+    logger.info(
+        "Plugin parameters:\n%s\n%s\n",
+        nixl_agent1.get_plugin_mem_types("GDS"),
+        nixl_agent1.get_plugin_params("GDS"),
+    )
 
     nixl_agent1.create_backend("GDS")
 
-    logger.info("Backend parameters:\n%s\n%s\n",
-                nixl_agent1.get_backend_mem_types("GDS"),
-                nixl_agent1.get_backend_params("GDS"),
-            )
+    logger.info(
+        "Backend parameters:\n%s\n%s\n",
+        nixl_agent1.get_backend_mem_types("GDS"),
+        nixl_agent1.get_backend_params("GDS"),
+    )
 
     # get DRAM buf and initialize it to 0xba for verification
     addr1 = nixl_utils.malloc_passthru(buf_size)
