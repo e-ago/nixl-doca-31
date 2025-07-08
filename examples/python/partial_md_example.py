@@ -70,8 +70,7 @@ if __name__ == "__main__":
     buf_size = 256
     # Allocate memory and register with NIXL
 
-    logger.info("Using NIXL Plugins from:")
-    logger.info(os.environ["NIXL_PLUGIN_DIR"])
+    logger.info("Using NIXL Plugins from:\n%s", os.environ["NIXL_PLUGIN_DIR"])
 
     etcd_endpoints = os.getenv("NIXL_ETCD_ENDPOINTS", "")
     if etcd_endpoints:

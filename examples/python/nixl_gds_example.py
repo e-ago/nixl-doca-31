@@ -34,8 +34,7 @@ if __name__ == "__main__":
         logger.error("Please specify file path in argv")
         exit(0)
 
-    logger.info("Using NIXL Plugins from:")
-    logger.info(os.environ["NIXL_PLUGIN_DIR"])
+    logger.info("Using NIXL Plugins from:\n%s", os.environ["NIXL_PLUGIN_DIR"])
 
     agent_config = nixl_agent_config(backends=[])
     nixl_agent1 = nixl_agent("GDSTester", agent_config)
