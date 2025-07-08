@@ -34,7 +34,7 @@ def test_list():
 
     pickled_list = pickle.dumps(test_list)
 
-    logger.debug(pickled_list)
+    logger.info(pickled_list)
 
     unpickled_list = pickle.loads(pickled_list)
 
@@ -42,7 +42,7 @@ def test_list():
 
     assert test_list.getType() == nixl.DRAM_SEG
 
-    logger.debug("Descriptor count: %s", test_list.descCount())
+    logger.info("Descriptor count: %s", test_list.descCount())
     assert test_list.descCount() == 3
 
     test_list.remDesc(1)
@@ -90,10 +90,8 @@ def test_agent():
     meta1 = agent1.getLocalMD()
     meta2 = agent2.getLocalMD()
 
-    logger.debug("Agent1 MD: ")
-    logger.debug(meta1)
-    logger.debug("Agent2 MD: ")
-    logger.debug(meta2)
+    logger.info("Agent1 MD: \n%s", meta1)
+    logger.info("Agent2 MD: \n%s", meta2)
 
     ret_name = agent1.loadRemoteMD(meta2)
     assert ret_name.decode(encoding="UTF-8") == name2
@@ -112,15 +110,15 @@ def test_agent():
     logger.info("Transfer from %s to %s", str(addr1 + offset), str(addr2 + offset))
 
     noti_str = "n\0tification"
-    logger.debug("Notification string: %s", noti_str)
+    logger.info("Notification string: %s", noti_str)
 
-    logger.debug("Source list: %s", src_list)
-    logger.debug("Destination list: %s", dst_list)
+    logger.info("Source list: %s", src_list)
+    logger.info("Destination list: %s", dst_list)
 
     handle = agent1.createXferReq(nixl.NIXL_WRITE, src_list, dst_list, name2, noti_str)
     assert handle != 0
 
-    logger.debug("Transfer handle: %s", handle)
+    logger.info("Transfer handle: %s", handle)
 
     status = agent1.postXferReq(handle)
     assert status == nixl.NIXL_SUCCESS or status == nixl.NIXL_IN_PROG
@@ -140,7 +138,7 @@ def test_agent():
 
     nixl_utils.verify_transfer(addr1 + offset, addr2 + offset, req_size)
     assert len(notifMap[name1]) == 1
-    logger.debug("Received notification: %s", notifMap[name1][0])
+    logger.info("Received notification: %s", notifMap[name1][0])
     assert notifMap[name1][0] == noti_str.encode()
 
     logger.info("Transfer verified")

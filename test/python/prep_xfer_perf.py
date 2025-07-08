@@ -71,7 +71,7 @@ def prep_handles(agent: nixl_agent, xfer_dlist, reg_dlist, indices):
 
 def perf_test_list(num_descs: int, addr_base: int, length: int):
     logger.info("Starting list test...")
-    logger.debug("-" * 40)
+    logger.info("-" * 40)
     agent = init_agent()
     descs_list = [(addr_base + i * length, length, 0) for i in range(num_descs)]
     indices = list(range(num_descs))
@@ -100,7 +100,7 @@ def perf_test_list(num_descs: int, addr_base: int, length: int):
 
 def perf_test_array(num_descs: int, addr_base: int, length: int):
     logger.info("Starting array test...")
-    logger.debug("-" * 40)
+    logger.info("-" * 40)
     agent = init_agent()
     descs_np = np.zeros((num_descs, 3), dtype=np.uint64)
     indices = np.arange(num_descs)

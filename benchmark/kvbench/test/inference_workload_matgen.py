@@ -194,7 +194,7 @@ def gen_batches(
             curr_mem = 0
     if curr:
         batches.append(Batch(user_requests=curr))
-        log.warning(f"Last batch is incomplete, his size is {len(curr)}")
+        log.warning(f"Last batch is incomplete, with size {len(curr)}")
 
     return batches
 

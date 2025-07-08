@@ -11,5 +11,5 @@ jobs:
         fetch-depth: 2
     - name: Check for print() calls
       run: |
-        ./.gitlab/check_prints.sh ./src
-        ./.gitlab/check_prints.sh ./test
+        ./.ci/scripts/check_prints.sh ./src
+        ./.ci/scripts/check_prints.sh ./test

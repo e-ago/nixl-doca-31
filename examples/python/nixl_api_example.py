@@ -32,8 +32,7 @@ if __name__ == "__main__":
     buf_size = 256
     # Allocate memory and register with NIXL
 
-    logger.info("Using NIXL Plugins from:")
-    logger.debug(os.environ["NIXL_PLUGIN_DIR"])
+    logger.info("Using NIXL Plugins from:\nNIXL_PLUGIN_DIR=%s", os.environ["NIXL_PLUGIN_DIR"])
 
     # Example using nixl_agent_config
     agent_config = nixl_agent_config(backends=["UCX"])
@@ -42,14 +41,16 @@ if __name__ == "__main__":
     plugin_list = nixl_agent1.get_plugin_list()
     assert "UCX" in plugin_list
 
-    logger.info("Plugin parameters")
-    logger.debug(nixl_agent1.get_plugin_mem_types("UCX"))
-    logger.debug(nixl_agent1.get_plugin_params("UCX"))
+    logger.info("Plugin parameters:\n%s\n%s",
+                nixl_agent1.get_plugin_mem_types("UCX"),
+                nixl_agent1.get_plugin_params("UCX"),
+            )
 
-    logger.info("Loaded backend parameters")
-    logger.debug(nixl_agent1.get_backend_mem_types("UCX"))
-    logger.debug(nixl_agent1.get_backend_params("UCX"))
-    logger.info("")
+    logger.info(
+        "Backend parameters:\n%s\n%s",
+        nixl_agent1.get_backend_mem_types("UCX"),
+        nixl_agent1.get_backend_params("UCX"),
+    )
 
     addr1 = nixl_utils.malloc_passthru(buf_size * 2)
     addr2 = addr1 + buf_size
@@ -152,15 +153,14 @@ if __name__ == "__main__":
     test_notif = str.encode("DESCS: ") + serdes
     nixl_agent2.send_notif(remote_name, test_notif)
 
-    logger.debug("sent notif ")
-    logger.debug(test_notif)
+    logger.info("sent notif: \n%s", test_notif)
 
     notif_recv = False
 
     while not notif_recv:
         notif_map = nixl_agent1.get_new_notifs()
         if "initiator" in notif_map:
-            logger.debug("received message from initiator")
+            logger.info("received message from initiator")
             for msg in notif_map["initiator"]:
                 if msg == test_notif:
                     notif_recv = True

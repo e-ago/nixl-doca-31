@@ -61,7 +61,7 @@ if __name__ == "__main__":
     else:
         tensors = [torch.zeros(10, dtype=torch.float32) for _ in range(2)]
 
-    logger.debug("%s Tensors: %s", args.mode, tensors)
+    logger.info("Running test with %s tensors in mode %s", tensors, args.mode)
 
     reg_descs = agent.register_memory(tensors)
     if not reg_descs:  # Same as reg_descs if successful
@@ -136,7 +136,6 @@ if __name__ == "__main__":
                 logger.error("Data verification failed for tensor %d.", i)
                 exit()
         logger.info("%s Data verification passed", args.mode)
-        logger.debug("Verified tensors: %s", tensors)
 
     if args.mode != "target":
         agent.remove_remote_agent("target")
