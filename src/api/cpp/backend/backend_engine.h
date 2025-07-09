@@ -186,7 +186,7 @@ class nixlBackendEngine {
         virtual int progress() { return 0; }
 
 
-        // *** Optional virtual methods that is goo to be implemented by any backend *** //
+        // *** Optional virtual methods that is good to be implemented by any backend *** //
 
         // Query information about a list of memory/storage
         virtual nixl_status_t

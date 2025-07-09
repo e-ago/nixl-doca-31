@@ -150,7 +150,7 @@ enum class nixl_cost_t {
  */
 struct nixlQueryRespArgs {
     bool accessible;
-    nixl_blob_t info;
+    nixl_b_params_t info;
 };
 /**
  * @brief A typedef for nixlQueryArgs
