@@ -62,6 +62,7 @@ class nixlAgentData {
         std::string     name;
         nixlAgentConfig config;
         nixlLock        lock;
+        bool telemetryEnabled;
 
         // some handle that can be used to instantiate an object from the lib
         std::map<std::string, void*> backendLibs;
@@ -96,9 +97,6 @@ class nixlAgentData {
         void commWorker(nixlAgent* myAgent);
         void enqueueCommWork(nixl_comm_req_t request);
         void getCommWork(std::vector<nixl_comm_req_t> &req_list);
-
-        // Flag for telemetry
-        bool telemetryEn;
 
     public:
         nixlAgentData(const std::string &name, const nixlAgentConfig &cfg);
