@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # Allocate memory and register with NIXL
 
     logger.info(
-        "Using NIXL Plugins from:\nNIXL_PLUGIN_DIR=%s", os.environ["NIXL_PLUGIN_DIR"]
+        "Using NIXL Plugins from:\n%s", os.environ["NIXL_PLUGIN_DIR"]
     )
 
     # Example using nixl_agent_config
