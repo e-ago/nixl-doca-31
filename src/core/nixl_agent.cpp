@@ -830,14 +830,21 @@ nixlAgent::estimateXferCost(const nixlXferReqH *req_hndl,
                                               extra_params);
 }
 
+namespace {
 inline void
 telemetryPrint(const std::string msg_type,
                const uint64_t descs,
                const uint64_t bytes,
-               const uint64_t elapsed) {
+               const chrono_point_t start_time) {
+
+    const std::chrono::duration<double, std::micro> xfer_time =
+        std::chrono::high_resolution_clock::now() - start_time;
+    // If endTime needs to be recorded per Xfer, now() value here can be returned
+
     NIXL_DEBUG << msg_type << " Xfer with " << descs << " descs of total size: " << bytes << " in "
-               << elapsed << "us.";
+               << xfer_time.count() << "us.";
 }
+} // namespace
 
 nixl_status_t
 nixlAgent::postXferReq(nixlXferReqH *req_hndl,
@@ -851,10 +858,8 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
         return NIXL_ERR_INVALID_PARAM;
 
     // The initial checks should be fast if post succeeds, including them in the overall time
-    // Resetting the endTime in case of repost
     if (data->telemetryEnabled) {
         req_hndl->startTime = std::chrono::high_resolution_clock::now();
-        req_hndl->endTime = min_chrono_time;
     }
 
     NIXL_SHARED_LOCK_GUARD(data->lock);
@@ -908,21 +913,17 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
     req_hndl->status = ret;
 
     if (data->telemetryEnabled) {
-        auto currTime = std::chrono::high_resolution_clock::now();
-        auto xfer_time = currTime - req_hndl->startTime;
-
-        if (req_hndl->status == NIXL_SUCCESS) {
-            req_hndl->endTime = currTime;
+        if (req_hndl->status == NIXL_SUCCESS)
             telemetryPrint("Posted and Completed",
                            req_hndl->initiatorDescs->descCount(),
                            req_hndl->totalBytes,
-                           xfer_time.count());
-        } else if (req_hndl->status == NIXL_IN_PROG) {
+                           req_hndl->startTime);
+        else if (req_hndl->status == NIXL_IN_PROG)
             telemetryPrint("Posted",
                            req_hndl->initiatorDescs->descCount(),
                            req_hndl->totalBytes,
-                           xfer_time.count());
-        }
+                           req_hndl->startTime);
+        // Errors should show up in debug log separately, not adding a print here
     }
 
     return ret;
@@ -943,16 +944,11 @@ nixlAgent::getXferStatus (nixlXferReqH *req_hndl) const {
                                      req_hndl->backendHandle);
     }
 
-    if (data->telemetryEnabled) {
-        if (req_hndl->status == NIXL_SUCCESS) {
-            req_hndl->endTime = std::chrono::high_resolution_clock::now();
-            auto xfer_time = req_hndl->endTime - req_hndl->startTime;
-            telemetryPrint("Completed",
-                           req_hndl->initiatorDescs->descCount(),
-                           req_hndl->totalBytes,
-                           xfer_time.count());
-        }
-    }
+    if (data->telemetryEnabled && req_hndl->status == NIXL_SUCCESS)
+        telemetryPrint("Completed",
+                       req_hndl->initiatorDescs->descCount(),
+                       req_hndl->totalBytes,
+                       req_hndl->startTime);
 
     return req_hndl->status;
 }
