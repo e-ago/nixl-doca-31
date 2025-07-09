@@ -39,7 +39,7 @@ if cargo.found() and get_option('enable_rust_bindings')
       dependencies: [nixl_dep]
     )
 
-    rust_lib = custom_target(
+  rust_lib = custom_target(
       RUST_BINDINGS_NAME,
       command: cargo_build_cmd,
       input: [],
