@@ -128,8 +128,6 @@ fn build_nixl(cc_builder: &mut cc::Build) {
         .file("wrapper.cpp")
         .includes(nixl_include_paths);
 
-    let arch = get_arch();
-    let nixl_lib_path = get_lib_path(&nixl_root_path, &arch);
 
     println!("cargo:rustc-link-search={}", nixl_lib_path);
 

@@ -40,11 +40,11 @@ impl Agent {
                 })
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(agent.name = %name, error = "invalid_param", "Failed to create NIXL agent");
+                tracing::error!(agent.name = %name, error = "invalid_param", "Failed to create NIXL agent");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(agent.name = %name, error = "backend_error", "Failed to create NIXL agent");
+                tracing::error!(agent.name = %name, error = "backend_error", "Failed to create NIXL agent");
                 Err(NixlError::BackendError)
             }
         }
@@ -76,11 +76,11 @@ impl Agent {
                 Ok(utils::StringList::new(inner))
             }
             -1 => {
-                tracing::trace!(error = "invalid_param", "Failed to get NIXL plugins");
+                tracing::error!(error = "invalid_param", "Failed to get NIXL plugins");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(error = "backend_error", "Failed to get NIXL plugins");
+                tracing::error!(error = "backend_error", "Failed to get NIXL plugins");
                 Err(NixlError::BackendError)
             }
         }
@@ -164,11 +164,11 @@ impl Agent {
                 })
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(plugin.name = %plugin, error = "invalid_param", "Failed to create NIXL backend");
+                tracing::error!(plugin.name = %plugin, error = "invalid_param", "Failed to create NIXL backend");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(plugin.name = %plugin, error = "backend_error", "Failed to create NIXL backend");
+                tracing::error!(plugin.name = %plugin, error = "backend_error", "Failed to create NIXL backend");
                 Err(NixlError::BackendError)
             }
         }
@@ -280,11 +280,11 @@ impl Agent {
                 Ok(bytes)
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(error = "invalid_param", "Failed to get local metadata");
+                tracing::error!(error = "invalid_param", "Failed to get local metadata");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(error = "backend_error", "Failed to get local metadata");
+                tracing::error!(error = "backend_error", "Failed to get local metadata");
                 Err(NixlError::BackendError)
             }
         }
@@ -317,11 +317,11 @@ impl Agent {
                 Ok(name)
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(error = "invalid_param", "Failed to load remote metadata");
+                tracing::error!(error = "invalid_param", "Failed to load remote metadata");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(error = "backend_error", "Failed to load remote metadata");
+                tracing::error!(error = "backend_error", "Failed to load remote metadata");
                 Err(NixlError::BackendError)
             }
         }
@@ -472,14 +472,14 @@ impl Agent {
                 Ok(())
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(
+                tracing::error!(
                     error = "invalid_param",
                     "Failed to send local metadata to etcd"
                 );
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(
+                tracing::error!(
                     error = "backend_error",
                     "Failed to send local metadata to etcd"
                 );
@@ -523,11 +523,11 @@ impl Agent {
                 Ok(())
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(error = "invalid_param", remote_agent = %remote_name, "Failed to fetch remote metadata from etcd");
+                tracing::error!(error = "invalid_param", remote_agent = %remote_name, "Failed to fetch remote metadata from etcd");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(error = "backend_error", remote_agent = %remote_name, "Failed to fetch remote metadata from etcd");
+                tracing::error!(error = "backend_error", remote_agent = %remote_name, "Failed to fetch remote metadata from etcd");
                 Err(NixlError::BackendError)
             }
         }
@@ -554,14 +554,14 @@ impl Agent {
                 Ok(())
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(
+                tracing::error!(
                     error = "invalid_param",
                     "Failed to invalidate local metadata in etcd"
                 );
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(
+                tracing::error!(
                     error = "backend_error",
                     "Failed to invalidate local metadata in etcd"
                 );
@@ -617,11 +617,11 @@ impl Agent {
                 Ok(())
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(error = "invalid_param", remote_agent = %remote_agent, "Failed to send notification");
+                tracing::error!(error = "invalid_param", remote_agent = %remote_agent, "Failed to send notification");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(error = "backend_error", remote_agent = %remote_agent, "Failed to send notification");
+                tracing::error!(error = "backend_error", remote_agent = %remote_agent, "Failed to send notification");
                 Err(NixlError::BackendError)
             }
         }
@@ -755,11 +755,11 @@ impl Agent {
                 Ok(true)
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(error = "invalid_param", "Failed to post transfer request");
+                tracing::error!(error = "invalid_param", "Failed to post transfer request");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(error = "backend_error", "Failed to post transfer request");
+                tracing::error!(error = "backend_error", "Failed to post transfer request");
                 Err(NixlError::BackendError)
             }
         }
@@ -809,11 +809,11 @@ impl Agent {
                 Ok(())
             }
             NIXL_CAPI_ERROR_INVALID_PARAM => {
-                tracing::trace!(error = "invalid_param", "Failed to get notifications");
+                tracing::error!(error = "invalid_param", "Failed to get notifications");
                 Err(NixlError::InvalidParam)
             }
             _ => {
-                tracing::trace!(error = "backend_error", "Failed to get notifications");
+                tracing::error!(error = "backend_error", "Failed to get notifications");
                 Err(NixlError::BackendError)
             }
         }
