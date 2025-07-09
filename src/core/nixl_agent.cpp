@@ -82,6 +82,9 @@ nixlAgentData::nixlAgentData(const std::string &name,
         throw std::invalid_argument("Agent needs a name");
 
     memorySection = new nixlLocalSection();
+
+    const char *telemetry = std::getenv("NIXL_EN_TELEMETRY");
+    telemetryEn = (telemetry != nullptr);
 }
 
 nixlAgentData::~nixlAgentData() {
@@ -839,7 +842,11 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
         return NIXL_ERR_INVALID_PARAM;
 
     // The initial checks should be fast if post succeeds, including them in the overall time
-    req_hndl->startTime = std::chrono::high_resolution_clock::now();
+    // Resetting the endTime in case of repost
+    if (data->telemetryEn) {
+        req_hndl->startTime = std::chrono::high_resolution_clock::now();
+        req_hndl->endTime = MIN_CHRONO_TIME;
+    }
 
     NIXL_SHARED_LOCK_GUARD(data->lock);
     // Check if the remote was invalidated before post/repost
@@ -891,17 +898,23 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
                                       &opt_args);
     req_hndl->status = ret;
 
-    if (req_hndl->status == NIXL_SUCCESS) {
-        req_hndl->endTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::micro> xfer_time =
-            req_hndl->endTime - req_hndl->startTime;
-        NIXL_DEBUG << "Xfer with " << req_hndl->initiatorDescs->descCount()
-                   << " descs of total size: " << req_hndl->totalBytes << " took "
-                   << xfer_time.count() << "us";
+    if (data->telemetryEn) {
+        std::chrono::high_resolution_clock::time_point currTime =
+            std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::micro> xfer_time = currTime - req_hndl->startTime;
+
+        if (req_hndl->status == NIXL_SUCCESS) {
+            req_hndl->endTime = currTime;
+            NIXL_DEBUG << "Xfer with " << req_hndl->initiatorDescs->descCount()
+                       << " descs of total size: " << req_hndl->totalBytes
+                       << " finished in post and took " << xfer_time.count() << "us to finish";
+        } else {
+            NIXL_DEBUG << "Posting of Xfer with " << req_hndl->initiatorDescs->descCount()
+                       << " descs of total size: " << req_hndl->totalBytes << " took "
+                       << xfer_time.count() << "us";
+        }
     }
 
-    // If post time is important for debugging, we can add a DEBUG print here by getting
-    // the current time minus req_hndl->startTime, but not to be included in req_hndl.
     return ret;
 }
 
@@ -920,13 +933,15 @@ nixlAgent::getXferStatus (nixlXferReqH *req_hndl) const {
                                      req_hndl->backendHandle);
     }
 
-    if (req_hndl->status == NIXL_SUCCESS) {
-        req_hndl->endTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::micro> xfer_time =
-            req_hndl->endTime - req_hndl->startTime;
-        NIXL_DEBUG << "Xfer with " << req_hndl->initiatorDescs->descCount()
-                   << " descs of total size: " << req_hndl->totalBytes << " took "
-                   << xfer_time.count() << "us";
+    if (data->telemetryEn) {
+        if (req_hndl->status == NIXL_SUCCESS) {
+            req_hndl->endTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::micro> xfer_time =
+                req_hndl->endTime - req_hndl->startTime;
+            NIXL_DEBUG << "Xfer with " << req_hndl->initiatorDescs->descCount()
+                       << " descs of total size: " << req_hndl->totalBytes << " took "
+                       << xfer_time.count() << "us to finish";
+        }
     }
 
     return req_hndl->status;

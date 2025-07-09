@@ -17,6 +17,8 @@
 #ifndef __TRANSFER_REQUEST_H_
 #define __TRANSFER_REQUEST_H_
 
+#define MIN_CHRONO_TIME std::chrono::time_point<std::chrono::high_resolution_clock>::min();
+
 // Contains pointers to corresponding backend engine and its handler, and populated
 // and verified DescLists, and other state and metadata needed for a NIXL transfer
 class nixlXferReqH {
@@ -34,10 +36,10 @@ class nixlXferReqH {
         nixl_xfer_op_t     backendOp;
         nixl_status_t      status;
 
-        // Telemetry info
+        // Telemetry info, setting times to 0 in case checkXfer is called before postXfer
+        std::chrono::high_resolution_clock::time_point startTime = MIN_CHRONO_TIME;
+        std::chrono::high_resolution_clock::time_point endTime = MIN_CHRONO_TIME;
         uint64_t totalBytes;
-        std::chrono::high_resolution_clock::time_point startTime;
-        std::chrono::high_resolution_clock::time_point endTime;
 
     public:
         inline nixlXferReqH() { }
