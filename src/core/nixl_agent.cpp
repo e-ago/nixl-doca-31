@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <iostream>
 #include "nixl.h"
 #include "serdes/serdes.h"
 #include "backend/backend_engine.h"
@@ -848,8 +849,9 @@ telemetryPrint(const std::string msg_type,
     // If endTime needs to be recorded per Xfer, now() value here can be returned
 
     // Can become NIXL_DEBUG if we add another method to output the telemetry data
-    NIXL_INFO << msg_type << " Xfer with " << descs << " descs of total size: " << bytes << " in "
-              << xfer_time.count() << "us.";
+    std::cout << "[NIXL TELEMETRY]: " << msg_type << " Xfer with " << descs
+              << " descriptors of total size " << bytes << "B in " << xfer_time.count() << "us."
+              << std::endl;
 }
 } // namespace
 
