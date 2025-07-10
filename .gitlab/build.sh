@@ -53,6 +53,7 @@ apt-get -qq install -y curl \
                              libibverbs-dev \
                              libgoogle-glog-dev \
                              libgtest-dev \
+                             libgmock-dev \
                              libjsoncpp-dev \
                              libpython3-dev \
                              libboost-all-dev \
