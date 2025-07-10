@@ -837,8 +837,8 @@ telemetryPrint(const std::string msg_type,
                const uint64_t bytes,
                const chrono_point_t start_time) {
 
-    const std::chrono::duration<double, std::micro> xfer_time =
-        std::chrono::high_resolution_clock::now() - start_time;
+    const auto xfer_time = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::high_resolution_clock::now() - start_time);
     // If endTime needs to be recorded per Xfer, now() value here can be returned
 
     NIXL_DEBUG << msg_type << " Xfer with " << descs << " descs of total size: " << bytes << " in "
