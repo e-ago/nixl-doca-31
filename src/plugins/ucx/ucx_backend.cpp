@@ -25,6 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "absl/strings/numbers.h"
+#include "taskflow/taskflow.hpp"
 
 #ifdef HAVE_CUDA
 
@@ -531,6 +532,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
     std::vector<std::string> devs; /* Empty vector */
     nixl_b_params_t* custom_params = init_params->customParams;
 
+    progressMode = init_params->progressMode;
     if (init_params->progressMode == NIXL_PROGRESS_MODE_THREAD) {
         pthrOn = true;
         if (!nixlUcxMtLevelIsSupported(nixl_ucx_mt_t::WORKER)) {

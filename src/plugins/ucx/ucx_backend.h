@@ -111,6 +111,9 @@ class nixlUcxEngine
         std::vector<std::unique_ptr<nixlUcxWorker>> uws;
         std::string workerAddr;
 
+        /* TODO */
+        nixl_progress_mode_t progressMode;
+
         /* Progress thread data */
         std::mutex pthrActiveLock;
         std::condition_variable pthrActiveCV;

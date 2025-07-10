@@ -22,7 +22,7 @@ if etcd_dep.found()
 endif
 
 if 'UCX' in static_plugins
-    nixl_lib_deps += [ ucx_backend_interface, cuda_dep ]
+    nixl_lib_deps += [ ucx_backend_interface, taskflow_proj, cuda_dep ]
 endif
 
 if 'UCX_MO' in static_plugins
