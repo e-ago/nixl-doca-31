@@ -29,15 +29,14 @@
 class nixlAgentConfig {
     private:
 
-        /** @var Enable progress thread */
-        bool     useProgThread;
+        /** @var Progress mode */
+        nixl_progress_mode_t progressMode;
         /** @var Enable listener thread */
         bool     useListenThread;
         /** @var Port for listener thread to use */
         int      listenPort;
         /** @var synchronization mode for multi-threaded environment execution */
         nixl_thread_sync_t syncMode;
-
     public:
 
         /**
@@ -69,8 +68,13 @@ class nixlAgentConfig {
                          nixl_thread_sync_t sync_mode=nixl_thread_sync_t::NIXL_THREAD_SYNC_DEFAULT,
                          unsigned int num_workers = 1,
                          const uint64_t pthr_delay_us=0,
-                         const uint64_t lthr_delay_us = 100000) :
-                         useProgThread(use_prog_thread),
+                         const uint64_t lthr_delay_us = 100000,
+                         nixl_progress_mode_t progress_mode = NIXL_PROGRESS_MODE_EXPLICIT) :
+                         /* TODO: remove use_prog_thread */
+                         progressMode(progress_mode == NIXL_PROGRESS_MODE_EXPLICIT ?
+                                                       (use_prog_thread ? NIXL_PROGRESS_MODE_THREAD :
+                                                                          NIXL_PROGRESS_MODE_EXPLICIT) : 
+                                                       progress_mode),
                          useListenThread(use_listen_thread),
                          listenPort(port),
                          syncMode(sync_mode),

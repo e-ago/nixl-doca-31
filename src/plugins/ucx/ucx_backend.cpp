@@ -531,7 +531,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
     std::vector<std::string> devs; /* Empty vector */
     nixl_b_params_t* custom_params = init_params->customParams;
 
-    if (init_params->enableProgTh) {
+    if (init_params->progressMode == NIXL_PROGRESS_MODE_THREAD) {
         pthrOn = true;
         if (!nixlUcxMtLevelIsSupported(nixl_ucx_mt_t::WORKER)) {
             NIXL_ERROR << "UCX library does not support multi-threading";

@@ -78,7 +78,7 @@ nixlBackendEngine *createEngine(std::string name, uint32_t ndev, bool p_thread)
     nixl_b_params_t       custom_params;
 
     custom_params["num_ucx_engines"] = std::to_string(ndev);
-    init.enableProgTh = p_thread;
+    init.progressMode = p_thread ? NIXL_PROGRESS_MODE_THREAD : NIXL_PROGRESS_MODE_EXPLICIT;
     init.pthrDelay    = 100;
     init.localAgent   = name;
     init.customParams = &custom_params;

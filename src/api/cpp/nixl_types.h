@@ -75,6 +75,18 @@ enum class nixl_thread_sync_t {
 };
 
 /**
+ * @enum nixl_progress_mode_t
+ * @brief An enumeration of supported progress modes for NIXL
+ * 
+ * TODO: replace bool enable_pt/use_prog_thread with this enum
+ */
+enum nixl_progress_mode_t {
+    NIXL_PROGRESS_MODE_EXPLICIT,
+    NIXL_PROGRESS_MODE_THREAD,
+    NIXL_PROGRESS_MODE_THREADPOOL,
+};
+
+/**
  * @namespace nixlEnumStrings
  * @brief     This namespace to get string representation
  *            of different enums
