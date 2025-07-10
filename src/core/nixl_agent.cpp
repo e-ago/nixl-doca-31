@@ -83,8 +83,14 @@ nixlAgentData::nixlAgentData(const std::string &name,
 
     memorySection = new nixlLocalSection();
 
-    const char *telemetry = std::getenv("NIXL_EN_TELEMETRY");
-    telemetryEnabled = (telemetry != nullptr);
+    const char *telemetry = std::getenv("NIXL_TELEMETRY_ENABLE");
+    if (telemetry != nullptr) {
+        if ((!strcmp(telemetry, "y")) || (!strcmp(telemetry, "Y")))
+            telemetryEnabled = true;
+        else
+            NIXL_WARN
+                << "Invalid NIXL_TELEMETRY_ENABLE environment variable, not enabling telemetry.";
+    }
 }
 
 nixlAgentData::~nixlAgentData() {
@@ -841,8 +847,9 @@ telemetryPrint(const std::string msg_type,
         std::chrono::high_resolution_clock::now() - start_time);
     // If endTime needs to be recorded per Xfer, now() value here can be returned
 
-    NIXL_DEBUG << msg_type << " Xfer with " << descs << " descs of total size: " << bytes << " in "
-               << xfer_time.count() << "us.";
+    // Can become NIXL_DEBUG if we add another method to output the telemetry data
+    NIXL_INFO << msg_type << " Xfer with " << descs << " descs of total size: " << bytes << " in "
+              << xfer_time.count() << "us.";
 }
 } // namespace
 
