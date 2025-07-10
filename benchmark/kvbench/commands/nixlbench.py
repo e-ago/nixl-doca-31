@@ -34,6 +34,7 @@ class NIXLBench:
         check_consistency=False,
         device_list="all",
         enable_pt=False,
+        progress_mode="explicit",
         etcd_endpoints="http://localhost:2379",
         storage_enable_direct=False,
         filepath="",
@@ -70,6 +71,7 @@ class NIXLBench:
             check_consistency (bool, optional): Whether to check consistency. Defaults to False.
             device_list (str, optional): List of devices to use. Defaults to "all".
             enable_pt (bool, optional): Whether to enable peer-to-peer transfer. Defaults to False.
+            progress_mode (str, optional): Progress mode [explicit, thread, threadpool] (default: explicit).
             etcd_endpoints (str, optional): ETCD endpoints for runtime. Defaults to "http://localhost:2379".
             storage_enable_direct (bool, optional): Whether to enable direct I/O for storage operations. Defaults to False.
             filepath (str, optional): Path for GDS and POSIX operations. Defaults to "".
@@ -102,6 +104,7 @@ class NIXLBench:
         self.check_consistency = check_consistency
         self.device_list = device_list
         self.enable_pt = enable_pt
+        self.progress_mode = progress_mode
         self.etcd_endpoints = etcd_endpoints
         self.storage_enable_direct = storage_enable_direct
         self.filepath = filepath
@@ -227,6 +230,7 @@ class NIXLBench:
             "check_consistency": self.check_consistency,
             "device_list": self.device_list,
             "enable_pt": self.enable_pt,
+            "progress_mode": self.progress_mode,
             "etcd_endpoints": self.etcd_endpoints,
             "storage_enable_direct": self.storage_enable_direct,
             "filepath": self.filepath,
@@ -270,6 +274,7 @@ class NIXLBench:
             "check_consistency": False,
             "device_list": "all",
             "enable_pt": False,
+            "progress_mode": "explicit",
             "etcd_endpoints": "http://localhost:2379",
             "storage_enable_direct": False,
             "filepath": "",

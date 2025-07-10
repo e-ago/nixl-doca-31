@@ -95,6 +95,8 @@ namespace nixlEnumStrings {
     std::string memTypeStr(const nixl_mem_t &mem);
     std::string xferOpStr (const nixl_xfer_op_t &op);
     std::string statusStr (const nixl_status_t &status);
+    std::string_view progressModeStr (const nixl_progress_mode_t &progress_mode);
+    nixl_progress_mode_t parseProgressModeStr (std::string_view str);
 }
 
 

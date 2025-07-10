@@ -63,6 +63,30 @@ std::string nixlEnumStrings::statusStr (const nixl_status_t &status) {
     }
 }
 
+std::string_view nixlEnumStrings::progressModeStr (const nixl_progress_mode_t &progress_mode) {
+    switch (progress_mode) {
+        case NIXL_PROGRESS_MODE_EXPLICIT: return "explicit";
+        case NIXL_PROGRESS_MODE_THREAD:   return "thread";
+        case NIXL_PROGRESS_MODE_THREADPOOL: return "threadpool";
+        default: throw std::invalid_argument("Invalid progress mode");
+    }
+}
+
+nixl_progress_mode_t
+nixlEnumStrings::parseProgressModeStr (std::string_view str) {
+    static nixl_progress_mode_t progress_modes[] = {
+        NIXL_PROGRESS_MODE_EXPLICIT,
+        NIXL_PROGRESS_MODE_THREAD,
+        NIXL_PROGRESS_MODE_THREADPOOL
+    };
+    for (auto mode : progress_modes) {
+        if (str == progressModeStr(mode)) {
+            return mode;
+        }
+    }
+    throw std::invalid_argument(std::string("Invalid progress mode: ") + std::string(str));
+}
+
 /*** nixlAgentData constructor/destructor, as part of nixlAgent's ***/
 nixlAgentData::nixlAgentData(const std::string &name,
                              const nixlAgentConfig &cfg) :
