@@ -145,18 +145,17 @@ enum class nixl_cost_t {
 };
 
 /**
- * @struct nixlQueryArgs
+ * @struct nixlQuery
  * @brief A structure for querying memory results
  */
-struct nixlQueryRespArgs {
+struct nixlQueryResp {
     bool accessible;
     nixl_b_params_t info;
 };
 /**
- * @brief A typedef for nixlQueryArgs
- *        for querying memory results
+ * @brief An alias for nixlQueryResp for querying memory results
  */
-using nixl_query_resp_t = nixlQueryRespArgs;
+using nixl_query_resp_t = nixlQueryResp;
 
 
 /**
