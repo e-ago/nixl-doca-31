@@ -491,7 +491,7 @@ void nixlUcxEngine::progressThreadStart()
         pthrActive = false;
     }
 
-    if (!pthrOn) {
+    if (progressMode != NIXL_PROGRESS_MODE_THREAD) {
         // not enabled
         return;
     }
@@ -504,7 +504,7 @@ void nixlUcxEngine::progressThreadStart()
 
 void nixlUcxEngine::progressThreadStop()
 {
-    if (!pthrOn) {
+    if (progressMode != NIXL_PROGRESS_MODE_THREAD) {
         // not enabled
         return;
     }
@@ -526,15 +526,20 @@ void nixlUcxEngine::progressThreadRestart()
  * Constructor/Destructor
 *****************************************/
 
-nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
-: nixlBackendEngine (init_params) {
+std::unique_ptr<nixlUcxEngine>
+nixlUcxEngine::create(const nixlBackendInitParams &init_params)
+{
+    return std::unique_ptr<nixlUcxEngine>(new nixlUcxEngine(init_params));
+}
+
+nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
+: nixlBackendEngine (&init_params) {
     unsigned long numWorkers;
     std::vector<std::string> devs; /* Empty vector */
-    nixl_b_params_t* custom_params = init_params->customParams;
+    nixl_b_params_t* custom_params = init_params.customParams;
 
-    progressMode = init_params->progressMode;
-    if (init_params->progressMode == NIXL_PROGRESS_MODE_THREAD) {
-        pthrOn = true;
+    progressMode = init_params.progressMode;
+    if (progressMode == NIXL_PROGRESS_MODE_THREAD) {
         if (!nixlUcxMtLevelIsSupported(nixl_ucx_mt_t::WORKER)) {
             NIXL_ERROR << "UCX library does not support multi-threading";
             this->initErr = true;
@@ -549,10 +554,10 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
         // This will ensure that the resulting delay is at least 1ms and fits into int in order for
         // it to be compatible with poll()
         pthrDelay = std::chrono::ceil<std::chrono::milliseconds>(
-            std::chrono::microseconds(init_params->pthrDelay < std::numeric_limits<int>::max() ?
-                                      init_params->pthrDelay : std::numeric_limits<int>::max()));
+            std::chrono::microseconds(init_params.pthrDelay < std::numeric_limits<int>::max() ?
+                                      init_params.pthrDelay : std::numeric_limits<int>::max()));
     } else {
-        pthrOn = false;
+        // TODO
     }
 
     if (custom_params->count("device_list")!=0)
@@ -582,9 +587,9 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
                                           sizeof(nixlUcxIntReq),
                                           _internalRequestInit,
                                           _internalRequestFini,
-                                          pthrOn,
+                                          progressMode == NIXL_PROGRESS_MODE_THREAD,
                                           numWorkers,
-                                          init_params->syncMode);
+                                          init_params.syncMode);
 
     for (unsigned int i = 0; i < numWorkers; i++)
         uws.emplace_back(std::make_unique<nixlUcxWorker>(*uc, err_handling_mode));
@@ -598,7 +603,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
         return;
     }
 
-    if (pthrOn) {
+    if (progressMode == NIXL_PROGRESS_MODE_THREAD) {
         for (auto &uw: uws) {
             pollFds.push_back({uw->getEfd(), POLLIN, 0});
         }
@@ -640,7 +645,7 @@ nixlUcxEngine::~nixlUcxEngine () {
     }
 
     progressThreadStop();
-    if (pthrOn) {
+    if (progressMode == NIXL_PROGRESS_MODE_THREAD) {
         close(pthrControlPipe[0]);
         close(pthrControlPipe[1]);
     }
@@ -1210,7 +1215,9 @@ nixl_status_t nixlUcxEngine::getNotifs(notif_list_t &notif_list)
     if (notif_list.size()!=0)
         return NIXL_ERR_INVALID_PARAM;
 
-    if(!pthrOn) while(progress());
+    if (progressMode == NIXL_PROGRESS_MODE_EXPLICIT) {
+        while(progress());
+    }
 
     moveNotifList(notifMainList, notif_list);
     notifProgressCombineHelper(notifPthr, notif_list);

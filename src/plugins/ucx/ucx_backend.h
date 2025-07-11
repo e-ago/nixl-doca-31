@@ -118,7 +118,6 @@ class nixlUcxEngine
         std::mutex pthrActiveLock;
         std::condition_variable pthrActiveCV;
         bool pthrActive;
-        bool pthrOn;
         std::thread pthr;
         std::chrono::milliseconds pthrDelay;
         int pthrControlPipe[2];
@@ -186,14 +185,21 @@ class nixlUcxEngine
         void notifProgress();
         void notifProgressCombineHelper(notif_list_t &src, notif_list_t &tgt);
 
+        nixlUcxEngine(const nixlBackendInitParams& init_params);
+
     public:
-        nixlUcxEngine(const nixlBackendInitParams* init_params);
+        static std::unique_ptr<nixlUcxEngine>
+        create(const nixlBackendInitParams &init_params);
+
         ~nixlUcxEngine();
 
         bool supportsRemote() const override { return true; }
         bool supportsLocal() const override { return true; }
         bool supportsNotif() const override { return true; }
-        bool supportsProgTh() const override { return pthrOn; }
+        bool supportsProgTh() const override {
+            return progressMode == NIXL_PROGRESS_MODE_THREAD ||
+                   progressMode == NIXL_PROGRESS_MODE_THREADPOOL;
+        }
 
         nixl_mem_list_t getSupportedMems() const override;
 
