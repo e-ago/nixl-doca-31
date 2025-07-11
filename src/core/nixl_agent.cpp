@@ -88,6 +88,8 @@ nixlAgentData::nixlAgentData(const std::string &name,
     if (telemetry != nullptr) {
         if ((!strcmp(telemetry, "y")) || (!strcmp(telemetry, "Y")))
             telemetryEnabled = true;
+        else if ((!strcmp(telemetry, "n")) || (!strcmp(telemetry, "N")))
+            telemetryEnabled = false;
         else
             NIXL_WARN
                 << "Invalid NIXL_TELEMETRY_ENABLE environment variable, not enabling telemetry.";
