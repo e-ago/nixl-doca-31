@@ -105,23 +105,11 @@ using nixlUcxCudaDevicePrimaryCtxPtr = std::shared_ptr<nixlUcxCudaDevicePrimaryC
 
 class nixlUcxEngine
     : public nixlBackendEngine {
-    private:
+    protected:
         /* UCX data */
         std::unique_ptr<nixlUcxContext> uc;
         std::vector<std::unique_ptr<nixlUcxWorker>> uws;
         std::string workerAddr;
-
-        /* TODO */
-        nixl_progress_mode_t progressMode;
-
-        /* Progress thread data */
-        std::mutex pthrActiveLock;
-        std::condition_variable pthrActiveCV;
-        bool pthrActive;
-        std::thread pthr;
-        std::chrono::milliseconds pthrDelay;
-        int pthrControlPipe[2];
-        std::vector<pollfd> pollFds;
 
         /* CUDA data*/
         std::unique_ptr<nixlUcxCudaCtx> cudaCtx; // Context matching specific device
@@ -132,8 +120,6 @@ class nixlUcxEngine
 
         /* Notifications */
         notif_list_t notifMainList;
-        std::mutex  notifMtx;
-        notif_list_t notifPthrPriv, notifPthr;
 
         // Map of agent name to saved nixlUcxConnection info
         std::unordered_map<std::string, ucx_connection_ptr_t,
@@ -143,17 +129,7 @@ class nixlUcxEngine
         void vramInitCtx();
         void vramFiniCtx();
         int vramUpdateCtx(void *address, uint64_t devId, bool &restart_reqd);
-        int vramApplyCtx();
-
-        // Threading infrastructure
-        //   TODO: move the thread management one outside of NIXL common infra
-        void progressFunc();
-        void progressThreadStart();
-        void progressThreadStop();
-        void progressThreadRestart();
-        bool isProgressThread() const noexcept {
-            return std::this_thread::get_id() == pthr.get_id();
-        }
+        virtual int vramApplyCtx();
 
         // Connection helper
         static ucs_status_t
@@ -182,8 +158,11 @@ class nixlUcxEngine
                                     const std::string &msg,
                                     nixlUcxReq &req,
                                     size_t worker_id) const;
-        void notifProgress();
-        void notifProgressCombineHelper(notif_list_t &src, notif_list_t &tgt);
+        virtual void appendNotif(std::string remote_name, std::string msg);
+
+        size_t getWorkerId() const {
+            return std::hash<std::thread::id>{}(std::this_thread::get_id()) % uws.size();
+        }
 
         nixlUcxEngine(const nixlBackendInitParams& init_params);
 
@@ -196,10 +175,7 @@ class nixlUcxEngine
         bool supportsRemote() const override { return true; }
         bool supportsLocal() const override { return true; }
         bool supportsNotif() const override { return true; }
-        bool supportsProgTh() const override {
-            return progressMode == NIXL_PROGRESS_MODE_THREAD ||
-                   progressMode == NIXL_PROGRESS_MODE_THREADPOOL;
-        }
+        bool supportsProgTh() const override { return false; }
 
         nixl_mem_list_t getSupportedMems() const override;
 
@@ -257,7 +233,7 @@ class nixlUcxEngine
 
         int progress() override;
 
-        nixl_status_t getNotifs(notif_list_t &notif_list);
+        nixl_status_t getNotifs(notif_list_t &notif_list) override;
         nixl_status_t genNotif(const std::string &remote_agent, const std::string &msg) const override;
 
         //public function for UCX worker to mark connections as connected
@@ -267,10 +243,50 @@ class nixlUcxEngine
         const std::unique_ptr<nixlUcxWorker> &getWorker(size_t worker_id) const {
             return uws[worker_id];
         }
+};
 
-        size_t getWorkerId() const {
-            return std::hash<std::thread::id>{}(std::this_thread::get_id()) % uws.size();
+class nixlUcxThreadEngine : public nixlUcxEngine {
+    private:
+        std::mutex pthrActiveLock;
+        std::condition_variable pthrActiveCV;
+        bool pthrActive;
+        std::thread pthr;
+        std::chrono::milliseconds pthrDelay;
+        int pthrControlPipe[2];
+        std::vector<pollfd> pollFds;
+
+        std::mutex  notifMtx;
+        notif_list_t notifPthrPriv;
+        notif_list_t notifPthr;
+
+        // Threading infrastructure
+        //   TODO: move the thread management one outside of NIXL common infra
+        void progressFunc();
+        void progressThreadStart();
+        void progressThreadStop();
+        bool isProgressThread() const noexcept {
+            return std::this_thread::get_id() == pthr.get_id();
         }
+
+        int vramApplyCtx() override;
+        void appendNotif(std::string remote_name, std::string msg) override;
+        void notifProgress();
+        void notifProgressCombineHelper(notif_list_t &src, notif_list_t &tgt);
+
+    public:
+        nixlUcxThreadEngine(const nixlBackendInitParams &init_params);
+        ~nixlUcxThreadEngine();
+        bool supportsProgTh() const override { return true; }
+        nixl_status_t getNotifs(notif_list_t &notif_list) override;
+};
+
+class nixlUcxThreadPoolEngine : public nixlUcxEngine {
+    private:
+
+    public:
+        nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params);
+        ~nixlUcxThreadPoolEngine();
+        bool supportsProgTh() const override { return true; }
 };
 
 #endif

@@ -428,11 +428,11 @@ public:
  * Progress thread management
 *****************************************/
 
-void nixlUcxEngine::progressFunc()
+void nixlUcxThreadEngine::progressFunc()
 {
     using namespace nixlTime;
 
-    vramApplyCtx();
+    nixlUcxEngine::vramApplyCtx();
 
     {
         std::unique_lock<std::mutex> lock(pthrActiveLock);
@@ -484,31 +484,21 @@ void nixlUcxEngine::progressFunc()
     }
 }
 
-void nixlUcxEngine::progressThreadStart()
+void nixlUcxThreadEngine::progressThreadStart()
 {
     {
         std::unique_lock<std::mutex> lock(pthrActiveLock);
         pthrActive = false;
     }
 
-    if (progressMode != NIXL_PROGRESS_MODE_THREAD) {
-        // not enabled
-        return;
-    }
-
-    pthr = std::thread(&nixlUcxEngine::progressFunc, this);
+    pthr = std::thread(&nixlUcxThreadEngine::progressFunc, this);
 
     std::unique_lock<std::mutex> lock(pthrActiveLock);
     pthrActiveCV.wait(lock, [&]{ return pthrActive; });
 }
 
-void nixlUcxEngine::progressThreadStop()
+void nixlUcxThreadEngine::progressThreadStop()
 {
-    if (progressMode != NIXL_PROGRESS_MODE_THREAD) {
-        // not enabled
-        return;
-    }
-
     const char signal = 'X';
     int ret = write(pthrControlPipe[1], &signal, sizeof(signal));
     if (ret < 0)
@@ -516,10 +506,55 @@ void nixlUcxEngine::progressThreadStop()
     pthr.join();
 }
 
-void nixlUcxEngine::progressThreadRestart()
+int nixlUcxThreadEngine::vramApplyCtx()
 {
     progressThreadStop();
     progressThreadStart();
+    return nixlUcxEngine::vramApplyCtx();
+}
+
+void nixlUcxThreadEngine::appendNotif(std::string remote_name, std::string msg)
+{
+    if (isProgressThread()) {
+        /* Append to the private list to allow batching */
+        notifPthrPriv.push_back(std::make_pair(std::move(remote_name), std::move(msg)));
+    } else {
+        nixlUcxEngine::appendNotif(std::move(remote_name), std::move(msg));
+    }
+}
+
+void nixlUcxThreadEngine::notifProgressCombineHelper(notif_list_t &src, notif_list_t &tgt)
+{
+    const std::lock_guard<std::mutex> lock(notifMtx);
+    moveNotifList(src, tgt);
+}
+
+void nixlUcxThreadEngine::notifProgress()
+{
+    notifProgressCombineHelper(notifPthrPriv, notifPthr);
+}
+
+nixl_status_t nixlUcxThreadEngine::getNotifs(notif_list_t &notif_list)
+{
+    if (!notif_list.empty())
+        return NIXL_ERR_INVALID_PARAM;
+
+    moveNotifList(notifMainList, notif_list);
+    notifProgressCombineHelper(notifPthr, notif_list);
+    return NIXL_SUCCESS;
+}
+
+/****************************************
+ * Threadpool engine
+*****************************************/
+
+nixlUcxThreadPoolEngine::nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params)
+    : nixlUcxEngine(init_params) {
+    // TODO
+}
+
+nixlUcxThreadPoolEngine::~nixlUcxThreadPoolEngine() {
+    // TODO
 }
 
 /****************************************
@@ -529,7 +564,19 @@ void nixlUcxEngine::progressThreadRestart()
 std::unique_ptr<nixlUcxEngine>
 nixlUcxEngine::create(const nixlBackendInitParams &init_params)
 {
-    return std::unique_ptr<nixlUcxEngine>(new nixlUcxEngine(init_params));
+    nixlUcxEngine *engine;
+    switch (init_params.progressMode) {
+        case NIXL_PROGRESS_MODE_THREAD:
+            engine = new nixlUcxThreadEngine(init_params);
+            break;
+        case NIXL_PROGRESS_MODE_THREADPOOL:
+            engine = new nixlUcxThreadPoolEngine(init_params);
+            break;
+        default:
+            engine = new nixlUcxEngine(init_params);
+            break;
+    }
+    return std::unique_ptr<nixlUcxEngine>(engine);
 }
 
 nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
@@ -537,28 +584,6 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
     unsigned long numWorkers;
     std::vector<std::string> devs; /* Empty vector */
     nixl_b_params_t* custom_params = init_params.customParams;
-
-    progressMode = init_params.progressMode;
-    if (progressMode == NIXL_PROGRESS_MODE_THREAD) {
-        if (!nixlUcxMtLevelIsSupported(nixl_ucx_mt_t::WORKER)) {
-            NIXL_ERROR << "UCX library does not support multi-threading";
-            this->initErr = true;
-            return;
-        }
-        if (pipe(pthrControlPipe) < 0) {
-            NIXL_PERROR << "Couldn't create progress thread control pipe";
-            this->initErr = true;
-            return;
-        }
-
-        // This will ensure that the resulting delay is at least 1ms and fits into int in order for
-        // it to be compatible with poll()
-        pthrDelay = std::chrono::ceil<std::chrono::milliseconds>(
-            std::chrono::microseconds(init_params.pthrDelay < std::numeric_limits<int>::max() ?
-                                      init_params.pthrDelay : std::numeric_limits<int>::max()));
-    } else {
-        // TODO
-    }
 
     if (custom_params->count("device_list")!=0)
         devs = str_split((*custom_params)["device_list"], ", ");
@@ -587,7 +612,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
                                           sizeof(nixlUcxIntReq),
                                           _internalRequestInit,
                                           _internalRequestFini,
-                                          progressMode == NIXL_PROGRESS_MODE_THREAD,
+                                          init_params.progressMode == NIXL_PROGRESS_MODE_THREAD,
                                           numWorkers,
                                           init_params.syncMode);
 
@@ -601,13 +626,6 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
         NIXL_ERROR << "Failed to get UCX worker address";
         initErr = true;
         return;
-    }
-
-    if (progressMode == NIXL_PROGRESS_MODE_THREAD) {
-        for (auto &uw: uws) {
-            pollFds.push_back({uw->getEfd(), POLLIN, 0});
-        }
-        pollFds.push_back({pthrControlPipe[0], POLLIN, 0});
     }
 
     uw->regAmCallback(CONN_CHECK, connectionCheckAmCb, this);
@@ -624,7 +642,6 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
 
     m_cudaPrimaryCtx = std::make_shared<nixlUcxCudaDevicePrimaryCtx>();
     vramInitCtx();
-    progressThreadStart();
 }
 
 nixl_mem_list_t nixlUcxEngine::getSupportedMems () const {
@@ -644,12 +661,40 @@ nixlUcxEngine::~nixlUcxEngine () {
         return;
     }
 
-    progressThreadStop();
-    if (progressMode == NIXL_PROGRESS_MODE_THREAD) {
-        close(pthrControlPipe[0]);
-        close(pthrControlPipe[1]);
-    }
     vramFiniCtx();
+}
+
+nixlUcxThreadEngine::nixlUcxThreadEngine(const nixlBackendInitParams &init_params)
+    : nixlUcxEngine(init_params) {
+    if (!nixlUcxMtLevelIsSupported(nixl_ucx_mt_t::WORKER)) {
+        NIXL_ERROR << "UCX library does not support multi-threading";
+        this->initErr = true;
+        return;
+    }
+    if (pipe(pthrControlPipe) < 0) {
+        NIXL_PERROR << "Couldn't create progress thread control pipe";
+        this->initErr = true;
+        return;
+    }
+
+    // This will ensure that the resulting delay is at least 1ms and fits into int in order for
+    // it to be compatible with poll()
+    pthrDelay = std::chrono::ceil<std::chrono::milliseconds>(
+        std::chrono::microseconds(init_params.pthrDelay < std::numeric_limits<int>::max() ?
+                                  init_params.pthrDelay : std::numeric_limits<int>::max()));
+
+    for (auto &uw: uws) {
+        pollFds.push_back({uw->getEfd(), POLLIN, 0});
+    }
+    pollFds.push_back({pthrControlPipe[0], POLLIN, 0});
+
+    progressThreadStart();
+}
+
+nixlUcxThreadEngine::~nixlUcxThreadEngine() {
+    progressThreadStop();
+    close(pthrControlPipe[0]);
+    close(pthrControlPipe[1]);
 }
 
 /****************************************
@@ -829,7 +874,6 @@ nixl_status_t nixlUcxEngine::registerMem (const nixlBlobDesc &mem,
             //TODO Add to logging
         }
         if (need_restart) {
-            progressThreadRestart();
             // set the ctx for main thread
             vramApplyCtx();
         }
@@ -1170,6 +1214,11 @@ nixl_status_t nixlUcxEngine::notifSendPriv(const std::string &remote_agent,
     return ret;
 }
 
+void nixlUcxEngine::appendNotif(std::string remote_name, std::string msg)
+{
+    notifMainList.push_back(std::make_pair(std::move(remote_name), std::move(msg)));
+}
+
 ucs_status_t
 nixlUcxEngine::notifAmCb(void *arg, const void *header,
                          size_t header_length, void *data,
@@ -1189,39 +1238,17 @@ nixlUcxEngine::notifAmCb(void *arg, const void *header,
     std::string remote_name = ser_des.getStr("name");
     std::string msg = ser_des.getStr("msg");
 
-    if (engine->isProgressThread()) {
-        /* Append to the private list to allow batching */
-        engine->notifPthrPriv.push_back(std::make_pair(std::move(remote_name), std::move(msg)));
-    } else {
-        engine->notifMainList.push_back(std::make_pair(std::move(remote_name), std::move(msg)));
-    }
-
+    engine->appendNotif(std::move(remote_name), std::move(msg));
     return UCS_OK;
-}
-
-void nixlUcxEngine::notifProgressCombineHelper(notif_list_t &src, notif_list_t &tgt)
-{
-    const std::lock_guard<std::mutex> lock(notifMtx);
-    moveNotifList(src, tgt);
-}
-
-void nixlUcxEngine::notifProgress()
-{
-    notifProgressCombineHelper(notifPthrPriv, notifPthr);
 }
 
 nixl_status_t nixlUcxEngine::getNotifs(notif_list_t &notif_list)
 {
-    if (notif_list.size()!=0)
+    if (!notif_list.empty())
         return NIXL_ERR_INVALID_PARAM;
 
-    if (progressMode == NIXL_PROGRESS_MODE_EXPLICIT) {
-        while(progress());
-    }
-
+    while(progress());
     moveNotifList(notifMainList, notif_list);
-    notifProgressCombineHelper(notifPthr, notif_list);
-
     return NIXL_SUCCESS;
 }
 
