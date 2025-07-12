@@ -280,13 +280,4 @@ class nixlUcxThreadEngine : public nixlUcxEngine {
         nixl_status_t getNotifs(notif_list_t &notif_list) override;
 };
 
-class nixlUcxThreadPoolEngine : public nixlUcxEngine {
-    private:
-
-    public:
-        nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params);
-        ~nixlUcxThreadPoolEngine();
-        bool supportsProgTh() const override { return true; }
-};
-
 #endif

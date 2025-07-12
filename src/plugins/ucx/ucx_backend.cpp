@@ -428,6 +428,39 @@ public:
  * Progress thread management
 *****************************************/
 
+nixlUcxThreadEngine::nixlUcxThreadEngine(const nixlBackendInitParams &init_params)
+    : nixlUcxEngine(init_params) {
+    if (!nixlUcxMtLevelIsSupported(nixl_ucx_mt_t::WORKER)) {
+        NIXL_ERROR << "UCX library does not support multi-threading";
+        this->initErr = true;
+        return;
+    }
+    if (pipe(pthrControlPipe) < 0) {
+        NIXL_PERROR << "Couldn't create progress thread control pipe";
+        this->initErr = true;
+        return;
+    }
+
+    // This will ensure that the resulting delay is at least 1ms and fits into int in order for
+    // it to be compatible with poll()
+    pthrDelay = std::chrono::ceil<std::chrono::milliseconds>(
+        std::chrono::microseconds(init_params.pthrDelay < std::numeric_limits<int>::max() ?
+                                  init_params.pthrDelay : std::numeric_limits<int>::max()));
+
+    for (auto &uw: uws) {
+        pollFds.push_back({uw->getEfd(), POLLIN, 0});
+    }
+    pollFds.push_back({pthrControlPipe[0], POLLIN, 0});
+
+    progressThreadStart();
+}
+
+nixlUcxThreadEngine::~nixlUcxThreadEngine() {
+    progressThreadStop();
+    close(pthrControlPipe[0]);
+    close(pthrControlPipe[1]);
+}
+
 void nixlUcxThreadEngine::progressFunc()
 {
     using namespace nixlTime;
@@ -548,14 +581,21 @@ nixl_status_t nixlUcxThreadEngine::getNotifs(notif_list_t &notif_list)
  * Threadpool engine
 *****************************************/
 
-nixlUcxThreadPoolEngine::nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params)
-    : nixlUcxEngine(init_params) {
-    // TODO
-}
+class nixlUcxThreadPoolEngine : public nixlUcxEngine {
+    private:
 
-nixlUcxThreadPoolEngine::~nixlUcxThreadPoolEngine() {
-    // TODO
-}
+    public:
+        nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params) :
+            nixlUcxEngine(init_params) {
+            // TODO
+        }
+
+        ~nixlUcxThreadPoolEngine() {
+            // TODO
+        }
+
+        bool supportsProgTh() const override { return true; }
+};
 
 /****************************************
  * Constructor/Destructor
@@ -662,39 +702,6 @@ nixlUcxEngine::~nixlUcxEngine () {
     }
 
     vramFiniCtx();
-}
-
-nixlUcxThreadEngine::nixlUcxThreadEngine(const nixlBackendInitParams &init_params)
-    : nixlUcxEngine(init_params) {
-    if (!nixlUcxMtLevelIsSupported(nixl_ucx_mt_t::WORKER)) {
-        NIXL_ERROR << "UCX library does not support multi-threading";
-        this->initErr = true;
-        return;
-    }
-    if (pipe(pthrControlPipe) < 0) {
-        NIXL_PERROR << "Couldn't create progress thread control pipe";
-        this->initErr = true;
-        return;
-    }
-
-    // This will ensure that the resulting delay is at least 1ms and fits into int in order for
-    // it to be compatible with poll()
-    pthrDelay = std::chrono::ceil<std::chrono::milliseconds>(
-        std::chrono::microseconds(init_params.pthrDelay < std::numeric_limits<int>::max() ?
-                                  init_params.pthrDelay : std::numeric_limits<int>::max()));
-
-    for (auto &uw: uws) {
-        pollFds.push_back({uw->getEfd(), POLLIN, 0});
-    }
-    pollFds.push_back({pthrControlPipe[0], POLLIN, 0});
-
-    progressThreadStart();
-}
-
-nixlUcxThreadEngine::~nixlUcxThreadEngine() {
-    progressThreadStop();
-    close(pthrControlPipe[0]);
-    close(pthrControlPipe[1]);
 }
 
 /****************************************
