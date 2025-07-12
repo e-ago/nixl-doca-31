@@ -347,7 +347,8 @@ PYBIND11_MODULE(_bindings, m) {
         .def(py::init<bool>())
         .def(py::init<bool, bool>())
         .def(py::init<bool, bool, int>())
-        .def(py::init<bool, bool, int, nixl_thread_sync_t>());
+        .def(py::init<bool, bool, int, nixl_thread_sync_t>())
+        .def(py::init<bool, bool, int, nixl_thread_sync_t, uint16_t>());
 
     //note: pybind will automatically convert notif_map to python types:
     //so, a Dictionary of string: List<string>

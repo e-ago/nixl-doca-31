@@ -145,7 +145,7 @@ def nixl_bench_args(func):
         func
     )
     func = click.option(
-        "--progress_mode", type=str, help="Progress mode [explicit, thread, threadpool] (default: explicit)"
+        "--progress_threads", type=int, help="Number of progress threads (default: 0)"
     )(func)
     func = click.option(
         "--device_list", type=str, help="Comma-separated device names (default: all)"

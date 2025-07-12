@@ -44,7 +44,7 @@ void test_thread(int id)
     }
 
     init_params.localAgent   = my_name;
-    init_params.progressMode = USE_PTHREAD ? NIXL_PROGRESS_MODE_THREAD : NIXL_PROGRESS_MODE_EXPLICIT;
+    init_params.numThreads   = USE_PTHREAD ? 1 : 0;
     init_params.customParams = &custom_params;
     init_params.type         = "UCX";
 

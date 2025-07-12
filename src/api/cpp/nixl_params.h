@@ -29,8 +29,8 @@
 class nixlAgentConfig {
     private:
 
-        /** @var Progress mode */
-        nixl_progress_mode_t progressMode;
+        /** @var Number of threads used by the backend */
+        uint16_t numThreads;
         /** @var Enable listener thread */
         bool     useListenThread;
         /** @var Port for listener thread to use */
@@ -59,6 +59,7 @@ class nixlAgentConfig {
          * @param use_listen_thread  flag to determine use of listener thread
          * @param port               specify port for listener thread to listen on
          * @param sync_mode          Thread synchronization mode
+         * @param num_threads        Number of progress threads
          * @param pthr_delay_us      Optional delay for pthread in us
          * @param lthr_delay_us      Optional delay for listener thread in us
          */
@@ -66,15 +67,11 @@ class nixlAgentConfig {
                          const bool use_listen_thread=false,
                          const int port=0,
                          nixl_thread_sync_t sync_mode=nixl_thread_sync_t::NIXL_THREAD_SYNC_DEFAULT,
-                         unsigned int num_workers = 1,
+                         uint16_t num_threads = 0,
                          const uint64_t pthr_delay_us=0,
-                         const uint64_t lthr_delay_us = 100000,
-                         nixl_progress_mode_t progress_mode = NIXL_PROGRESS_MODE_EXPLICIT) :
+                         const uint64_t lthr_delay_us = 100000) :
                          /* TODO: remove use_prog_thread */
-                         progressMode(progress_mode == NIXL_PROGRESS_MODE_EXPLICIT ?
-                                                       (use_prog_thread ? NIXL_PROGRESS_MODE_THREAD :
-                                                                          NIXL_PROGRESS_MODE_EXPLICIT) : 
-                                                       progress_mode),
+                         numThreads(use_prog_thread ? 1 : num_threads),
                          useListenThread(use_listen_thread),
                          listenPort(port),
                          syncMode(sync_mode),

@@ -565,15 +565,15 @@ std::unique_ptr<nixlUcxEngine>
 nixlUcxEngine::create(const nixlBackendInitParams &init_params)
 {
     nixlUcxEngine *engine;
-    switch (init_params.progressMode) {
-        case NIXL_PROGRESS_MODE_THREAD:
+    switch (init_params.numThreads) {
+        case 0:
+            engine = new nixlUcxEngine(init_params);
+            break;
+        case 1:
             engine = new nixlUcxThreadEngine(init_params);
             break;
-        case NIXL_PROGRESS_MODE_THREADPOOL:
-            engine = new nixlUcxThreadPoolEngine(init_params);
-            break;
         default:
-            engine = new nixlUcxEngine(init_params);
+            engine = new nixlUcxThreadPoolEngine(init_params);
             break;
     }
     return std::unique_ptr<nixlUcxEngine>(engine);
@@ -612,7 +612,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
                                           sizeof(nixlUcxIntReq),
                                           _internalRequestInit,
                                           _internalRequestFini,
-                                          init_params.progressMode == NIXL_PROGRESS_MODE_THREAD,
+                                          init_params.numThreads == 1,
                                           numWorkers,
                                           init_params.syncMode);
 

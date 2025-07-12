@@ -75,18 +75,6 @@ enum class nixl_thread_sync_t {
 };
 
 /**
- * @enum nixl_progress_mode_t
- * @brief An enumeration of supported progress modes for NIXL
- * 
- * TODO: replace bool enable_pt/use_prog_thread with this enum
- */
-enum nixl_progress_mode_t {
-    NIXL_PROGRESS_MODE_EXPLICIT,
-    NIXL_PROGRESS_MODE_THREAD,
-    NIXL_PROGRESS_MODE_THREADPOOL,
-};
-
-/**
  * @namespace nixlEnumStrings
  * @brief     This namespace to get string representation
  *            of different enums
@@ -95,8 +83,6 @@ namespace nixlEnumStrings {
     std::string memTypeStr(const nixl_mem_t &mem);
     std::string xferOpStr (const nixl_xfer_op_t &op);
     std::string statusStr (const nixl_status_t &status);
-    std::string_view progressModeStr (const nixl_progress_mode_t &progress_mode);
-    nixl_progress_mode_t parseProgressModeStr (std::string_view str);
 }
 
 

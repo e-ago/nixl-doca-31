@@ -102,7 +102,7 @@ protected:
         initParams_.localAgent = "test-agent";
         initParams_.type = "OBJ";
         initParams_.customParams = &customParams_;
-        initParams_.progressMode = NIXL_PROGRESS_MODE_EXPLICIT;
+        initParams_.numThreads = 0;
         initParams_.pthrDelay = 0;
         initParams_.syncMode = nixl_thread_sync_t::NIXL_THREAD_SYNC_RW;
 
