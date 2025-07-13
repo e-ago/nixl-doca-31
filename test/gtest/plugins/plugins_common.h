@@ -33,6 +33,48 @@ namespace plugins_common {
  * Provides common functionality for all plugin tests.
  */
 class SetupBackendTestFixture : public testing::TestWithParam<nixlBackendInitParams> {
+protected:
+    std::unique_ptr<nixlBackendEngine> remote_backend_engine_;
+    std::unique_ptr<nixlBackendEngine> backend_engine_;
+
+    void
+    SetUp() override;
+
+    void
+    ResetLocalBuf();
+
+    bool
+    CheckLocalBuf();
+
+    bool
+    SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
+
+    bool
+    SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
+
+    bool
+    TestXfer(nixl_xfer_op_t op);
+
+    bool
+    VerifyXfer();
+
+    bool
+    TeardownXfer();
+
+    bool
+    TestLocalXfer(nixl_xfer_op_t op);
+
+    bool
+    TestRemoteXfer(nixl_xfer_op_t op);
+
+    bool
+    TestGenNotif(std::string msg);
+
+    bool
+    IsLoaded() {
+        return isSetup_;
+    }
+
 private:
     static const char LOCAL_BUF_BYTE = 0x11;
     static const char XFER_BUF_BYTE = 0x22;
@@ -86,48 +128,6 @@ private:
     
     bool
     VerifyNotifs(std::string &msg);
-
-protected:
-    std::unique_ptr<nixlBackendEngine> remote_backend_engine_;
-    std::unique_ptr<nixlBackendEngine> backend_engine_;
-
-    void
-    SetUp() override;
-
-    void
-    ResetLocalBuf();
-
-    bool
-    CheckLocalBuf();
-
-    bool
-    SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
-
-    bool
-    SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
-
-    bool
-    TestXfer(nixl_xfer_op_t op);
-
-    bool
-    VerifyXfer();
-
-    bool
-    TeardownXfer();
-
-    bool
-    TestLocalXfer(nixl_xfer_op_t op);
-
-    bool
-    TestRemoteXfer(nixl_xfer_op_t op);
-
-    bool
-    TestGenNotif(std::string msg);
-
-    bool
-    IsLoaded() {
-        return isSetup_;
-    }
 };
 
 

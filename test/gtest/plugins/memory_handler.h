@@ -20,12 +20,6 @@
 #include "backend/backend_aux.h"
 
 class MemoryHandler {
-private:
-    nixl_mem_t memType_;
-    void *addr_;
-    size_t len_;
-    int devId_;
-
 public:
     MemoryHandler(nixl_mem_t memType, int devId) : memType_(memType), devId_(devId) {}
 
@@ -54,6 +48,12 @@ public:
     getMemType() {
         return memType_;
     }
+
+private:
+    nixl_mem_t memType_;
+    void *addr_;
+    size_t len_;
+    int devId_;
 };
 
 #endif // __MEMORY_HANDLER_H
