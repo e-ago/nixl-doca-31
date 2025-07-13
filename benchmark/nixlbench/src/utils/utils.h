@@ -124,7 +124,7 @@ class xferBenchConfig {
         static int warmup_iter;
         static int num_threads;
         static bool enable_pt;
-        static uint16_t progress_threads;
+        static size_t progress_threads;
         static std::string device_list;
         static std::string etcd_endpoints;
         static std::string filepath;

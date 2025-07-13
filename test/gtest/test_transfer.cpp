@@ -93,13 +93,14 @@ private:
     const size_t size;
 };
 
-class TestTransfer : public testing::TestWithParam<std::string> {
+class TestTransfer : public testing::TestWithParam<std::tuple<std::string, size_t, size_t>> {
 protected:
     static nixlAgentConfig getConfig(int listen_port)
     {
-        return nixlAgentConfig(true, listen_port > 0, listen_port,
-                               nixl_thread_sync_t::NIXL_THREAD_SYNC_RW, 0,
-                               100000);
+        size_t num_threads = getNumThreads();
+        return nixlAgentConfig(num_threads == 1, listen_port > 0, listen_port,
+                               nixl_thread_sync_t::NIXL_THREAD_SYNC_RW,
+                               num_threads, 0, 100000);
     }
 
     static int getPort(int i)
@@ -112,7 +113,7 @@ protected:
         nixl_b_params_t params;
 
         if (getBackendName() == "UCX" || getBackendName() == "UCX_MO") {
-            params["num_workers"] = "2";
+            params["num_workers"] = std::to_string(getNumWorkers());
         }
 
         return params;
@@ -141,9 +142,19 @@ protected:
         agents.clear();
     }
 
-    std::string getBackendName() const
+    static std::string getBackendName()
     {
-        return GetParam();
+        return std::get<0>(GetParam());
+    }
+
+    static size_t getNumWorkers()
+    {
+        return std::get<1>(GetParam());
+    }
+
+    static size_t getNumThreads()
+    {
+        return std::get<2>(GetParam());
     }
 
     static nixl_opt_args_t extra_params_ip(int remote)
@@ -490,7 +501,11 @@ TEST_P(TestTransfer, ListenerCommSize) {
         wait_until_true([&]() { return checkRemoteMD(0, 1) == NIXL_SUCCESS; }));
 }
 
-INSTANTIATE_TEST_SUITE_P(ucx, TestTransfer, testing::Values("UCX"));
-INSTANTIATE_TEST_SUITE_P(ucx_mo, TestTransfer, testing::Values("UCX_MO"));
+TEST_P(TestTransfer, threadpool) {
+}
+
+INSTANTIATE_TEST_SUITE_P(ucx, TestTransfer, testing::Values(std::make_tuple("UCX", 1, 1)));
+INSTANTIATE_TEST_SUITE_P(ucx_mo, TestTransfer, testing::Values(std::make_tuple("UCX_MO", 1, 1)));
+INSTANTIATE_TEST_SUITE_P(ucx_threadpool, TestTransfer, testing::Values(std::make_tuple("UCX", 9, 8)));
 
 } // namespace gtest

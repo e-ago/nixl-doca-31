@@ -25,7 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "absl/strings/numbers.h"
-#include "taskflow/taskflow.hpp"
+#include <asio.hpp>
 
 #ifdef HAVE_CUDA
 
@@ -314,17 +314,18 @@ static void _internalRequestReset(nixlUcxIntReq *req) {
 *****************************************/
 
 class nixlUcxBackendH : public nixlBackendReqH {
-private:
+protected:
     nixlUcxIntReq head;
     const nixlUcxEngine &eng;
     size_t worker_id;
+    size_t num_chunks;
 
     // Notification to be sent after completion of all requests
     struct Notif {
-	    std::string agent;
-	    nixl_blob_t payload;
-	    Notif(const std::string& remote_agent, const nixl_blob_t& msg)
-		    : agent(remote_agent), payload(msg) {}
+        std::string agent;
+        nixl_blob_t payload;
+        Notif(const std::string& remote_agent, const nixl_blob_t& msg)
+            : agent(remote_agent), payload(msg) {}
     };
     std::optional<Notif> notif;
 
@@ -333,14 +334,18 @@ public:
         return notif;
     }
 
-    nixlUcxBackendH(const nixlUcxEngine &eng_, size_t worker_id_): eng(eng_), worker_id(worker_id_) {}
+    size_t getNumChunks() const {
+        return num_chunks;
+    }
+
+    nixlUcxBackendH(const nixlUcxEngine &eng_, size_t worker_id_):
+        eng(eng_), worker_id(worker_id_), num_chunks(1) {}
 
     void append(nixlUcxIntReq *req) {
         head.link(req);
     }
 
-    nixl_status_t release()
-    {
+    virtual nixl_status_t release() {
         nixlUcxIntReq *req = head.next();
 
         if (!req) {
@@ -364,9 +369,7 @@ public:
         return NIXL_SUCCESS;
     }
 
-
-    nixl_status_t status()
-    {
+    virtual nixl_status_t status() {
         nixlUcxIntReq *req = head.next();
         nixl_status_t out_ret = NIXL_SUCCESS;
 
@@ -581,21 +584,119 @@ nixl_status_t nixlUcxThreadEngine::getNotifs(notif_list_t &notif_list)
  * Threadpool engine
 *****************************************/
 
-class nixlUcxThreadPoolEngine : public nixlUcxEngine {
-    private:
-
+class nixlUcxCompositeBackendH : public nixlUcxBackendH {
     public:
-        nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params) :
-            nixlUcxEngine(init_params) {
-            // TODO
+        nixlUcxCompositeBackendH(const nixlUcxEngine &eng, size_t workerId,
+                                 size_t chunkSize, size_t numChunks) :
+            nixlUcxBackendH(eng, workerId),
+            m_chunkSize(chunkSize) {
+            num_chunks = numChunks;
+            m_chunks.reserve(numChunks);
+            for (std::size_t i = 0; i < numChunks; ++i) {
+                m_chunks.push_back(new nixlUcxBackendH(eng, workerId));
+            }
         }
 
-        ~nixlUcxThreadPoolEngine() {
-            // TODO
+        nixl_status_t release() override {
+            // TODO: release all chunks
+            return NIXL_SUCCESS;
         }
 
-        bool supportsProgTh() const override { return true; }
+        nixl_status_t status() override {
+            // TODO: return status of all chunks
+            return NIXL_SUCCESS;
+        }
+
+    private:
+        std::vector<nixlUcxBackendH*> m_chunks;
+        size_t m_chunkSize;
 };
+
+class nixlUcxThreadContext {
+    public:
+        nixlUcxThreadContext(asio::io_context &io, nixlUcxWorker &worker) :
+            m_io(io), m_worker(worker) {}
+
+    void operator()() {
+        m_io.run();
+    }
+
+    private:
+        asio::io_context &m_io;
+        nixlUcxWorker &m_worker;
+};
+
+nixlUcxThreadPoolEngine::nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params)
+    : nixlUcxEngine(init_params) {
+    if (init_params.numThreads >= uws.size()) {
+        throw std::invalid_argument("Number of threads is greater than number of workers");
+    }
+
+    m_io = std::make_unique<asio::io_context>();
+
+    m_numDedicatedWorkers = std::min(init_params.numThreads, uws.size() - 1);
+    m_threadContexts.reserve(m_numDedicatedWorkers);
+    m_numSharedWorkers = uws.size() - m_numDedicatedWorkers;
+
+    for (size_t i = 0; i < m_numDedicatedWorkers; i++) {
+        // Shared workers come first in the array
+        m_threadContexts.emplace_back(*m_io, *getWorker(m_numSharedWorkers + i));
+        m_threads.emplace_back(m_threadContexts.back());
+    }
+}
+
+nixlUcxThreadPoolEngine::~nixlUcxThreadPoolEngine() {
+    m_io->stop();
+    for (auto &thread : m_threads) {
+        thread.join();
+    }
+}
+
+nixl_status_t
+nixlUcxThreadPoolEngine::prepXfer(const nixl_xfer_op_t &operation,
+                                  const nixl_meta_dlist_t &local,
+                                  const nixl_meta_dlist_t &remote,
+                                  const std::string &remote_agent,
+                                  nixlBackendReqH* &handle,
+                                  const nixl_opt_b_args_t* opt_args) const {
+    // TODO: find the best split strategy based on batchSize and numThreads
+    // Maybe make it configurable
+    const size_t MIN_CHUNK_SIZE = 8;
+    const size_t MAX_CHUNK_SIZE = 256;
+
+    size_t batchSize = local.descCount();
+    if (batchSize < MIN_CHUNK_SIZE) {
+        return nixlUcxEngine::prepXfer(operation, local, remote, remote_agent, handle, opt_args);
+    }
+
+    size_t chunkSize = std::clamp(batchSize / m_numDedicatedWorkers,
+                                  MIN_CHUNK_SIZE, MAX_CHUNK_SIZE);
+    size_t numChunks = (batchSize + chunkSize - 1) / chunkSize;
+
+    handle = new nixlUcxCompositeBackendH(*this, getWorkerId(), chunkSize, numChunks);
+    return NIXL_SUCCESS;
+}
+
+nixl_status_t
+nixlUcxThreadPoolEngine::postXfer(const nixl_xfer_op_t &operation,
+                                  const nixl_meta_dlist_t &local,
+                                  const nixl_meta_dlist_t &remote,
+                                  const std::string &remote_agent,
+                                  nixlBackendReqH* &handle,
+                                  const nixl_opt_b_args_t* opt_args) const {
+    nixlUcxBackendH *intHandle = (nixlUcxBackendH *)handle;
+    if (intHandle->getNumChunks() == 1) {
+        return nixlUcxEngine::postXfer(operation, local, remote, remote_agent, handle, opt_args);
+    }
+
+    // TODO: post chunks
+    return NIXL_SUCCESS;
+}
+
+int nixlUcxThreadPoolEngine::vramApplyCtx() {
+    // TODO: apply ctx to all dedicated workers
+    return nixlUcxEngine::vramApplyCtx();
+}
 
 /****************************************
  * Constructor/Destructor

@@ -30,7 +30,7 @@ class nixlAgentConfig {
     private:
 
         /** @var Number of threads used by the backend */
-        uint16_t numThreads;
+        size_t numThreads;
         /** @var Enable listener thread */
         bool     useListenThread;
         /** @var Port for listener thread to use */
@@ -67,7 +67,7 @@ class nixlAgentConfig {
                          const bool use_listen_thread=false,
                          const int port=0,
                          nixl_thread_sync_t sync_mode=nixl_thread_sync_t::NIXL_THREAD_SYNC_DEFAULT,
-                         uint16_t num_threads = 0,
+                         size_t num_threads = 0,
                          const uint64_t pthr_delay_us=0,
                          const uint64_t lthr_delay_us = 100000) :
                          /* TODO: remove use_prog_thread */

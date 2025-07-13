@@ -160,7 +160,7 @@ class nixlUcxEngine
                                     size_t worker_id) const;
         virtual void appendNotif(std::string remote_name, std::string msg);
 
-        size_t getWorkerId() const {
+        virtual size_t getWorkerId() const {
             return std::hash<std::thread::id>{}(std::this_thread::get_id()) % uws.size();
         }
 
@@ -245,6 +245,8 @@ class nixlUcxEngine
         }
 };
 
+// TODO: can it be merged with nixlUcxThreadPoolEngine?
+// It does progress for all workers, not just a dedicated one
 class nixlUcxThreadEngine : public nixlUcxEngine {
     private:
         std::mutex pthrActiveLock;
@@ -278,6 +280,47 @@ class nixlUcxThreadEngine : public nixlUcxEngine {
         ~nixlUcxThreadEngine();
         bool supportsProgTh() const override { return true; }
         nixl_status_t getNotifs(notif_list_t &notif_list) override;
+};
+
+namespace asio { class io_context; }
+class nixlUcxThreadContext;
+
+class nixlUcxThreadPoolEngine : public nixlUcxEngine {
+    protected:
+        std::unique_ptr<asio::io_context> m_io;
+        std::vector<std::thread> m_threads;
+        std::vector<nixlUcxThreadContext> m_threadContexts;
+        size_t m_numSharedWorkers;
+        size_t m_numDedicatedWorkers;
+
+        int vramApplyCtx() override;
+
+    public:
+        nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params);
+        ~nixlUcxThreadPoolEngine();
+
+        nixl_status_t prepXfer (const nixl_xfer_op_t &operation,
+                                const nixl_meta_dlist_t &local,
+                                const nixl_meta_dlist_t &remote,
+                                const std::string &remote_agent,
+                                nixlBackendReqH* &handle,
+                                const nixl_opt_b_args_t* opt_args=nullptr) const override;
+
+        nixl_status_t postXfer (const nixl_xfer_op_t &operation,
+                                const nixl_meta_dlist_t &local,
+                                const nixl_meta_dlist_t &remote,
+                                const std::string &remote_agent,
+                                nixlBackendReqH* &handle,
+                                const nixl_opt_b_args_t* opt_args=nullptr) const override;
+
+        bool supportsProgTh() const override { return true; }
+
+        // Returns shared worker id, that is used to tranfer small batches and
+        // send notifications
+        size_t getWorkerId() const override {
+            std::thread::id id = std::this_thread::get_id();
+            return std::hash<std::thread::id>{}(id) % m_numSharedWorkers;
+        }
 };
 
 #endif
