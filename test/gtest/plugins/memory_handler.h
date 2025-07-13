@@ -20,93 +20,92 @@
 #include "backend/backend_aux.h"
 #include "absl/log/check.h"
 
-template<nixl_mem_t MemType> struct MemoryHandler {
-    static void *
+class MemoryHandler {
+private:
+    nixl_mem_t memType_;
+    void *addr_;
+    size_t len_;
+    int devId_;
+
+public:
+    MemoryHandler(nixl_mem_t memType, int devId) : memType_(memType), devId_(devId) {}
+
+    void
     allocate(size_t len) {
-        CHECK(false) << "Unsupported memory type!";
-        return nullptr;
+        switch (memType_) {
+            case DRAM_SEG:
+                addr_ = new char[len];
+                break;
+            case OBJ_SEG:
+                addr_ = nullptr;
+                break;
+            default:
+                CHECK(false) << "Unsupported memory type!";
+                break;
+        }
+        len_ = len;
     }
 
-    static void
-    deallocate(void *addr) {
-        CHECK(false) << "Unsupported memory type!";
+    void
+    deallocate() {
+        switch (memType_) {
+            case DRAM_SEG:
+                delete[] static_cast<char *>(addr_);
+                break;
+            case OBJ_SEG:
+                break;
+            default:
+                CHECK(false) << "Unsupported memory type!";
+                break;
+        }
     }
 
-    static void
-    set(void *addr, char byte, size_t size) {
-        CHECK(false) << "Unsupported memory type!";
-    }
-    
-    static void
-    populateBlobDesc(nixlBlobDesc *desc, void *addr, size_t len, int devId) {
-        CHECK(false) << "Unsupported memory type!";
-    }
-
-    static void
-    populateMetaDesc(nixlMetaDesc *desc, void *addr, size_t len, int devId, nixlBackendMD *&md) {
-        CHECK(false) << "Unsupported memory type!";
-    }
-};
-
-template<> struct MemoryHandler<DRAM_SEG> {
-    static void *
-    allocate(size_t len) {
-        return new char[len];
-    }
-
-    static void
-    deallocate(void *addr) {
-        delete[] static_cast<char *>(addr);
-    }
-
-    static void
-    set(void *addr, char byte, size_t size) {
-        for (size_t i = 0; i < size; i++) {
-            memset(static_cast<char *>(addr) + i, byte + i, 1);
+    void
+    set(char byte) {
+        switch (memType_) {
+            case DRAM_SEG:
+                for (size_t i = 0; i < len_; i++)
+                    ((char *)addr_)[i] = byte + i;
+                break;
+            case OBJ_SEG:
+                break;
+            default:
+                CHECK(false) << "Unsupported memory type!";
+                break;
         }
     }
     
-    static void
-    populateBlobDesc(nixlBlobDesc *desc, void *addr, size_t len, int devId) {
-        desc->addr = reinterpret_cast<uintptr_t>(addr);
-        desc->len = len;
-        desc->devId = devId;
+    void
+    populateBlobDesc(nixlBlobDesc *desc) {
+        switch (memType_) {
+            case DRAM_SEG:
+                break;
+            case OBJ_SEG:
+                desc->metaInfo = "test-obj-key";
+                break;
+            default:
+                CHECK(false) << "Unsupported memory type!";
+                break;
+        }
+        desc->addr = reinterpret_cast<uintptr_t>(addr_);
+        desc->len = len_;
+        desc->devId = devId_;
     }
 
-    static void
-    populateMetaDesc(nixlMetaDesc *desc, void *addr, size_t len, int devId, nixlBackendMD *&md) {
-        desc->addr = reinterpret_cast<uintptr_t>(addr);
-        desc->len = len;
-        desc->devId = devId;
-        desc->metadataP = md;
-    }
-};
-
-template<> struct MemoryHandler<OBJ_SEG> {
-    static void *
-    allocate(size_t len) {
-        return nullptr;
-    }
-
-    static void
-    deallocate(void *addr) {}
-
-    static void
-    set(void *addr, char byte, size_t size) {}
-    
-    static void
-    populateBlobDesc(nixlBlobDesc *desc, void *addr, size_t len, int devId) {
-        desc->addr = 0;
-        desc->len = len;
-        desc->devId = devId;
-        desc->metaInfo = "test-obj-key";
-    }
-
-    static void
-    populateMetaDesc(nixlMetaDesc *desc, void *addr, size_t len, int devId, nixlBackendMD *&md) {
-        desc->addr = 0;
-        desc->len = len;
-        desc->devId = devId;
+    void
+    populateMetaDesc(nixlMetaDesc *desc, nixlBackendMD *&md) {
+        switch (memType_) {
+            case DRAM_SEG:
+                break;
+            case OBJ_SEG:
+                break;
+            default:
+                CHECK(false) << "Unsupported memory type!";
+                break;
+        }
+        desc->addr = reinterpret_cast<uintptr_t>(addr_);
+        desc->len = len_;
+        desc->devId = devId_;
         desc->metadataP = md;
     }
 };

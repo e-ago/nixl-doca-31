@@ -36,10 +36,15 @@ class SetupBackendTestFixture : public testing::TestWithParam<nixlBackendInitPar
 private:
     static const char LOCAL_BUF_BYTE = 0x11;
     static const char XFER_BUF_BYTE = 0x22;
-    static const size_t BUF_SIZE = 4;
+    static const size_t NUM_ENTRIES = 4;
+    static const size_t ENTRY_SIZE = 16;
+    static const size_t BUF_SIZE = NUM_ENTRIES * ENTRY_SIZE;
+    static const size_t NUM_BUFS = 3;
 
     std::unique_ptr<nixl_meta_dlist_t> reqSrcDescs_;
     std::unique_ptr<nixl_meta_dlist_t> reqDstDescs_;
+    std::unique_ptr<MemoryHandler> localMemHandler_;
+    std::unique_ptr<MemoryHandler> xferMemHandler_;
     std::function<void()> resetLocalBufCallback_;
     std::function<bool()> teardownCallback_;
     nixlBackendEngine *xferBackendEngine_;
@@ -52,8 +57,6 @@ private:
     std::string localAgent_;
     std::string xferAgent_;
     bool isSetup_ = false;
-    void *localMemBuf_;
-    void *xferMemBuf_;
     int localDevId_;
     int xferDevId_;
 
@@ -61,20 +64,20 @@ private:
     nixl_status_t
     backendAllocReg(nixlBackendEngine *engine,
                     size_t len,
-                    void *&mem_buf,
+                    std::unique_ptr<MemoryHandler>& mem_handler,
                     nixlBackendMD *&md,
                     int dev_id);
    
     template<nixl_mem_t MemType>
     nixl_status_t
     backendDeregDealloc(nixlBackendEngine *engine,
-                        void *mem_buf,
+                        std::unique_ptr<MemoryHandler>& mem_handler,
                         nixlBackendMD *&md,
                         int dev_id);
     
     template<nixl_mem_t MemType>
     void
-    populateDescList(nixl_meta_dlist_t &descs, void *buf, nixlBackendMD *&md, int dev_id);
+    populateDescList(nixl_meta_dlist_t &descs, std::unique_ptr<MemoryHandler>& mem_handler, nixlBackendMD *&md, int dev_id);
 
     bool
     VerifyConnInfo();
