@@ -101,12 +101,12 @@ MemoryHandler::reset() {
 }
 
 void
-MemoryHandler::populateBlobDesc(nixlBlobDesc *desc) {
+MemoryHandler::populateBlobDesc(nixlBlobDesc *desc, int buf_index) {
     switch (memType_) {
         case DRAM_SEG:
             break;
         case OBJ_SEG:
-            desc->metaInfo = "test-obj-key";
+            desc->metaInfo = "test-obj-key-" + std::to_string(buf_index);
             break;
         default:
             CHECK(false) << "Unsupported memory type!";

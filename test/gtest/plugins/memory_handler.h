@@ -39,7 +39,7 @@ public:
     reset();
 
     void
-    populateBlobDesc(nixlBlobDesc *desc);
+    populateBlobDesc(nixlBlobDesc *desc, int buf_index = 0);
 
     void
     populateMetaDesc(nixlMetaDesc *desc, nixlBackendMD *&md);
@@ -49,11 +49,27 @@ public:
         return memType_;
     }
 
+    void
+    setMD(nixlBackendMD *md) {
+        md_ = md;
+    }
+
+    nixlBackendMD *
+    getMD() {
+        return md_;
+    }
+
+    int
+    getDevId() {
+        return devId_;
+    }
+
 private:
     nixl_mem_t memType_;
     void *addr_;
     size_t len_;
     int devId_;
+    nixlBackendMD *md_;
 };
 
 #endif // __MEMORY_HANDLER_H

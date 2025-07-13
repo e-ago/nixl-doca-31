@@ -47,10 +47,10 @@ protected:
     checkLocalBuf();
 
     bool
-    setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
+    setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, int num_bufs = 1);
 
     bool
-    setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
+    setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, int num_bufs = 1);
 
     bool
     testXfer(nixl_xfer_op_t op);
@@ -81,41 +81,38 @@ private:
     static const size_t NUM_ENTRIES = 4;
     static const size_t ENTRY_SIZE = 16;
     static const size_t BUF_SIZE = NUM_ENTRIES * ENTRY_SIZE;
-    static const size_t NUM_BUFS = 3;
+    static const size_t MAX_NUM_BUFS = 3;
 
+    std::unique_ptr<MemoryHandler> localMemHandler_[MAX_NUM_BUFS];
+    std::unique_ptr<MemoryHandler> xferMemHandler_[MAX_NUM_BUFS];
     std::unique_ptr<nixl_meta_dlist_t> reqSrcDescs_;
     std::unique_ptr<nixl_meta_dlist_t> reqDstDescs_;
-    std::unique_ptr<MemoryHandler> localMemHandler_;
-    std::unique_ptr<MemoryHandler> xferMemHandler_;
     nixlBackendEngine *xferBackendEngine_;
     nixl_opt_b_args_t optionalXferArgs_;
-    nixlBackendMD *xferLoadedMem_;
+    nixlBackendMD *xferLoadedMD_;
     std::string remoteAgent_;
     nixlBackendReqH *handle_;
-    nixlBackendMD *localMD_;
-    nixlBackendMD *xferMD_;
     std::string localAgent_;
     std::string xferAgent_;
     bool isSetup_ = false;
     int localDevId_;
     int xferDevId_;
+    int num_bufs_;
 
     nixl_status_t
     backendAllocReg(nixlBackendEngine *engine,
                     nixl_mem_t mem_type,
                     size_t len,
-                    std::unique_ptr<MemoryHandler>& mem_handler,
-                    nixlBackendMD *&md,
+                    std::unique_ptr<MemoryHandler> &mem_handler,
+                    int buf_index,
                     int dev_id);
    
     nixl_status_t
     backendDeregDealloc(nixlBackendEngine *engine,
-                        std::unique_ptr<MemoryHandler>& mem_handler,
-                        nixlBackendMD *&md,
-                        int dev_id);
+                        std::unique_ptr<MemoryHandler>& mem_handler);
     
     void
-    populateDescList(nixl_meta_dlist_t &descs, std::unique_ptr<MemoryHandler>& mem_handler, nixlBackendMD *&md, int dev_id);
+    populateDescList(nixl_meta_dlist_t &descs, std::unique_ptr<MemoryHandler> mem_handler[]);
 
     bool
     verifyConnInfo();

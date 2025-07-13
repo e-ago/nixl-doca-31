@@ -58,6 +58,16 @@ TEST_P(SetupObjTestFixture, XferTest) {
     EXPECT_TRUE(teardownXfer());
 }
 
+TEST_P(SetupObjTestFixture, XferMultiBufTest) {
+    EXPECT_TRUE(isLoaded());
+    EXPECT_TRUE((setupLocalXfer(DRAM_SEG, OBJ_SEG, 3)));
+    EXPECT_TRUE(testLocalXfer(NIXL_WRITE));
+    resetLocalBuf();
+    EXPECT_TRUE(testLocalXfer(NIXL_READ));
+    EXPECT_TRUE(checkLocalBuf());
+    EXPECT_TRUE(teardownXfer());
+}
+
 INSTANTIATE_TEST_SUITE_P(ObjTests, SetupObjTestFixture, 
                         testing::Values(obj_test_params));
 
