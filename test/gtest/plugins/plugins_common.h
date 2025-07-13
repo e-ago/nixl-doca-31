@@ -41,37 +41,37 @@ protected:
     SetUp() override;
 
     void
-    ResetLocalBuf();
+    resetLocalBuf();
 
     bool
-    CheckLocalBuf();
+    checkLocalBuf();
 
     bool
-    SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
+    setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
 
     bool
-    SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
+    setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
 
     bool
-    TestXfer(nixl_xfer_op_t op);
+    testXfer(nixl_xfer_op_t op);
 
     bool
-    VerifyXfer();
+    verifyXfer();
 
     bool
-    TeardownXfer();
+    teardownXfer();
 
     bool
-    TestLocalXfer(nixl_xfer_op_t op);
+    testLocalXfer(nixl_xfer_op_t op);
 
     bool
-    TestRemoteXfer(nixl_xfer_op_t op);
+    testRemoteXfer(nixl_xfer_op_t op);
 
     bool
-    TestGenNotif(std::string msg);
+    testGenNotif(std::string msg);
 
     bool
-    IsLoaded() {
+    isLoaded() {
         return isSetup_;
     }
 
@@ -118,16 +118,16 @@ private:
     populateDescList(nixl_meta_dlist_t &descs, std::unique_ptr<MemoryHandler>& mem_handler, nixlBackendMD *&md, int dev_id);
 
     bool
-    VerifyConnInfo();
+    verifyConnInfo();
     
     void
-    SetupNotifs(std::string msg);
+    setupNotifs(std::string msg);
     
     bool
-    PrepXferMem(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool is_remote);
+    prepXferMem(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool is_remote);
     
     bool
-    VerifyNotifs(std::string &msg);
+    verifyNotifs(std::string &msg);
 };
 
 

@@ -81,12 +81,12 @@ SetupBackendTestFixture::backendDeregDealloc(nixlBackendEngine *engine,
 }
 
 void
-SetupBackendTestFixture::ResetLocalBuf() {
+SetupBackendTestFixture::resetLocalBuf() {
     localMemHandler_->reset();
 }
 
 bool
-SetupBackendTestFixture::CheckLocalBuf() {
+SetupBackendTestFixture::checkLocalBuf() {
     return localMemHandler_->check(LOCAL_BUF_BYTE);
 }
 
@@ -113,7 +113,7 @@ SetupBackendTestFixture::SetUp() {
 }
 
 bool
-SetupBackendTestFixture::VerifyConnInfo() {
+SetupBackendTestFixture::verifyConnInfo() {
     std::string conn_info;
     nixl_status_t ret;
 
@@ -139,13 +139,13 @@ SetupBackendTestFixture::VerifyConnInfo() {
 }
 
 void
-SetupBackendTestFixture::SetupNotifs(std::string msg) {
+SetupBackendTestFixture::setupNotifs(std::string msg) {
     optionalXferArgs_.notifMsg = msg;
     optionalXferArgs_.hasNotif = true;
 }
 
 bool
-SetupBackendTestFixture::PrepXferMem(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool is_remote) {
+SetupBackendTestFixture::prepXferMem(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool is_remote) {
     nixl_status_t ret;
 
     ret = backendAllocReg(backend_engine_.get(), local_mem_type, BUF_SIZE, localMemHandler_, localMD_, localDevId_);
@@ -194,7 +194,7 @@ SetupBackendTestFixture::PrepXferMem(nixl_mem_t local_mem_type, nixl_mem_t xfer_
 }
 
 bool
-SetupBackendTestFixture::TestXfer(nixl_xfer_op_t op) {
+SetupBackendTestFixture::testXfer(nixl_xfer_op_t op) {
     nixlBackendReqH *handle_;
     nixl_status_t ret;
 
@@ -240,7 +240,7 @@ SetupBackendTestFixture::TestXfer(nixl_xfer_op_t op) {
 }
 
 bool
-SetupBackendTestFixture::VerifyNotifs(std::string &msg) {
+SetupBackendTestFixture::verifyNotifs(std::string &msg) {
     notif_list_t target_notifs;
     int num_notifs = 0;
     nixl_status_t ret;
@@ -287,9 +287,9 @@ SetupBackendTestFixture::VerifyNotifs(std::string &msg) {
 }
 
 bool
-SetupBackendTestFixture::VerifyXfer() {
+SetupBackendTestFixture::verifyXfer() {
     if (backend_engine_->supportsNotif()) {
-        if (!VerifyNotifs(optionalXferArgs_.notifMsg)) {
+        if (!verifyNotifs(optionalXferArgs_.notifMsg)) {
             NIXL_ERROR << "Failed in notifications verification";
             return false;
         }
@@ -302,7 +302,7 @@ SetupBackendTestFixture::VerifyXfer() {
 }
 
 bool
-SetupBackendTestFixture::TeardownXfer() {
+SetupBackendTestFixture::teardownXfer() {
     nixl_status_t ret;
 
     ret = backend_engine_->unloadMD(xferLoadedMem_);
@@ -333,7 +333,7 @@ SetupBackendTestFixture::TeardownXfer() {
 }
 
 bool
-SetupBackendTestFixture::SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type) {
+SetupBackendTestFixture::setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type) {
     CHECK(backend_engine_->supportsLocal()) << "Backend engine does not support local transfers";
 
     xferBackendEngine_ = backend_engine_.get();
@@ -342,10 +342,10 @@ SetupBackendTestFixture::SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xf
     xferDevId_ = 0;
 
     if (xferBackendEngine_->supportsNotif()) {
-        SetupNotifs("Test");
+        setupNotifs("Test");
     }
 
-    if (!PrepXferMem(local_mem_type, xfer_mem_type, false /* local xfer */)) {
+    if (!prepXferMem(local_mem_type, xfer_mem_type, false /* local xfer */)) {
         NIXL_ERROR << "Failed to prepare transfer";
         return false;
     }
@@ -354,13 +354,13 @@ SetupBackendTestFixture::SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xf
 }
 
 bool
-SetupBackendTestFixture::TestLocalXfer(nixl_xfer_op_t op) {
-    if (!TestXfer(op)) {
+SetupBackendTestFixture::testLocalXfer(nixl_xfer_op_t op) {
+    if (!testXfer(op)) {
         NIXL_ERROR << "Failed to test transfer";
         return false;
     }
 
-    if (!VerifyXfer()) {
+    if (!verifyXfer()) {
         NIXL_ERROR << "Failed in transfer verification";
         return false;
     }
@@ -369,7 +369,7 @@ SetupBackendTestFixture::TestLocalXfer(nixl_xfer_op_t op) {
 }
 
 bool
-SetupBackendTestFixture::SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type) {
+SetupBackendTestFixture::setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type) {
     CHECK(backend_engine_->supportsRemote()) << "Backend engine does not support remote transfers";
 
     xferBackendEngine_ = remote_backend_engine_.get();
@@ -377,16 +377,16 @@ SetupBackendTestFixture::SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t x
     localDevId_ = 0;
     xferDevId_ = 1;
 
-    if (!VerifyConnInfo()) {
+    if (!verifyConnInfo()) {
         NIXL_ERROR << "Failed to verify connection info";
         return false;
     }
 
     if (backend_engine_->supportsNotif()) {
-        SetupNotifs("Test");
+        setupNotifs("Test");
     }
 
-    if (!PrepXferMem(local_mem_type, xfer_mem_type, true /* remote xfer */)) {
+    if (!prepXferMem(local_mem_type, xfer_mem_type, true /* remote xfer */)) {
         NIXL_ERROR << "Failed to prepare transfer";
         return false;
     }
@@ -395,13 +395,13 @@ SetupBackendTestFixture::SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t x
 }
 
 bool
-SetupBackendTestFixture::TestRemoteXfer(nixl_xfer_op_t op) {
-    if (!TestXfer(op)) {
+SetupBackendTestFixture::testRemoteXfer(nixl_xfer_op_t op) {
+    if (!testXfer(op)) {
         NIXL_ERROR << "Failed to test transfer";
         return false;
     }
 
-    if (!VerifyXfer()) {
+    if (!verifyXfer()) {
         NIXL_ERROR << "Failed in transfer verification";
         return false;
     }
@@ -410,7 +410,7 @@ SetupBackendTestFixture::TestRemoteXfer(nixl_xfer_op_t op) {
 }
 
 bool
-SetupBackendTestFixture::TestGenNotif(std::string msg) {
+SetupBackendTestFixture::testGenNotif(std::string msg) {
     nixl_status_t ret;
 
     ret = backend_engine_->genNotif(remoteAgent_, msg);
@@ -419,7 +419,7 @@ SetupBackendTestFixture::TestGenNotif(std::string msg) {
         return false;
     }
 
-    if (!VerifyNotifs(msg)) {
+    if (!verifyNotifs(msg)) {
         NIXL_ERROR << "Failed in notification verification";
         return false;
     }

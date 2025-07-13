@@ -45,17 +45,17 @@ protected:
 };
 
 TEST_P(SetupObjTestFixture, SimpleLifeCycleTest) {
-    EXPECT_TRUE(IsLoaded());
+    EXPECT_TRUE(isLoaded());
 }
 
 TEST_P(SetupObjTestFixture, XferTest) {
-    EXPECT_TRUE(IsLoaded());
-    EXPECT_TRUE((SetupLocalXfer(DRAM_SEG, OBJ_SEG)));
-    EXPECT_TRUE(TestLocalXfer(NIXL_WRITE));
-    ResetLocalBuf();
-    EXPECT_TRUE(TestLocalXfer(NIXL_READ));
-    EXPECT_TRUE(CheckLocalBuf());
-    EXPECT_TRUE(TeardownXfer());
+    EXPECT_TRUE(isLoaded());
+    EXPECT_TRUE((setupLocalXfer(DRAM_SEG, OBJ_SEG)));
+    EXPECT_TRUE(testLocalXfer(NIXL_WRITE));
+    resetLocalBuf();
+    EXPECT_TRUE(testLocalXfer(NIXL_READ));
+    EXPECT_TRUE(checkLocalBuf());
+    EXPECT_TRUE(teardownXfer());
 }
 
 INSTANTIATE_TEST_SUITE_P(ObjTests, SetupObjTestFixture, 
