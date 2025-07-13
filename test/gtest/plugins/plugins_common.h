@@ -45,8 +45,6 @@ private:
     std::unique_ptr<nixl_meta_dlist_t> reqDstDescs_;
     std::unique_ptr<MemoryHandler> localMemHandler_;
     std::unique_ptr<MemoryHandler> xferMemHandler_;
-    std::function<void()> resetLocalBufCallback_;
-    std::function<bool()> teardownCallback_;
     nixlBackendEngine *xferBackendEngine_;
     nixl_opt_b_args_t optionalXferArgs_;
     nixlBackendMD *xferLoadedMem_;
@@ -60,22 +58,20 @@ private:
     int localDevId_;
     int xferDevId_;
 
-    template<nixl_mem_t MemType>
     nixl_status_t
     backendAllocReg(nixlBackendEngine *engine,
+                    nixl_mem_t mem_type,
                     size_t len,
                     std::unique_ptr<MemoryHandler>& mem_handler,
                     nixlBackendMD *&md,
                     int dev_id);
    
-    template<nixl_mem_t MemType>
     nixl_status_t
     backendDeregDealloc(nixlBackendEngine *engine,
                         std::unique_ptr<MemoryHandler>& mem_handler,
                         nixlBackendMD *&md,
                         int dev_id);
     
-    template<nixl_mem_t MemType>
     void
     populateDescList(nixl_meta_dlist_t &descs, std::unique_ptr<MemoryHandler>& mem_handler, nixlBackendMD *&md, int dev_id);
 
@@ -85,17 +81,12 @@ private:
     void
     SetupNotifs(std::string msg);
     
-    template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
     bool
-    PrepXferMem(bool is_remote);
+    PrepXferMem(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool is_remote);
     
     bool
     VerifyNotifs(std::string &msg);
 
-    template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
-    bool
-    DeregDeallocCallback();
-    
 protected:
     std::unique_ptr<nixlBackendEngine> remote_backend_engine_;
     std::unique_ptr<nixlBackendEngine> backend_engine_;
@@ -109,13 +100,11 @@ protected:
     bool
     CheckLocalBuf();
 
-    template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
     bool
-    SetupLocalXfer();
+    SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
 
-    template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
     bool
-    SetupRemoteXfer();
+    SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type);
 
     bool
     TestXfer(nixl_xfer_op_t op);

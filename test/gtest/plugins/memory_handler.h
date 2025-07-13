@@ -19,6 +19,7 @@
 
 #include "backend/backend_aux.h"
 #include "absl/log/check.h"
+#include "common/nixl_log.h"
 
 class MemoryHandler {
 private:
@@ -75,6 +76,41 @@ public:
         }
     }
     
+    bool
+    check(char byte) {
+        switch (memType_) {
+            case DRAM_SEG:
+                for (size_t i = 0; i < len_; i++) {
+                    uint8_t expected_byte = (uint8_t)byte + i;
+                    if (((char *)addr_)[i] != expected_byte) {
+                        NIXL_ERROR << "Verification failed at index " << i << "! local: " << ((char *)addr_)[i] << ", expected: " << expected_byte;
+                        return false;
+                    }
+                }
+                break;
+            case OBJ_SEG:
+                break;
+            default:
+                CHECK(false) << "Unsupported memory type!";
+                break;
+        }
+        return true;
+    }
+
+    void
+    reset() {
+        switch (memType_) {
+            case DRAM_SEG:
+                memset(addr_, 0x00, len_);
+                break;
+            case OBJ_SEG:
+                break;
+            default:
+                CHECK(false) << "Unsupported memory type!";
+                break;
+        }
+    }
+    
     void
     populateBlobDesc(nixlBlobDesc *desc) {
         switch (memType_) {
@@ -107,6 +143,11 @@ public:
         desc->len = len_;
         desc->devId = devId_;
         desc->metadataP = md;
+    }
+
+    nixl_mem_t
+    getMemType() {
+        return memType_;
     }
 };
 

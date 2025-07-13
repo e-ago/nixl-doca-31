@@ -50,7 +50,7 @@ TEST_P(SetupObjTestFixture, SimpleLifeCycleTest) {
 
 TEST_P(SetupObjTestFixture, XferTest) {
     EXPECT_TRUE(IsLoaded());
-    EXPECT_TRUE((SetupLocalXfer<DRAM_SEG, OBJ_SEG>()));
+    EXPECT_TRUE((SetupLocalXfer(DRAM_SEG, OBJ_SEG)));
     EXPECT_TRUE(TestLocalXfer(NIXL_WRITE));
     ResetLocalBuf();
     EXPECT_TRUE(TestLocalXfer(NIXL_READ));

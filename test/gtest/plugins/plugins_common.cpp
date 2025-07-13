@@ -27,9 +27,9 @@
 
 namespace plugins_common {
 
-template<nixl_mem_t MemType>
 nixl_status_t
 SetupBackendTestFixture::backendAllocReg(nixlBackendEngine *engine,
+                                        nixl_mem_t mem_type,
                                         size_t len,
                                         std::unique_ptr<MemoryHandler>& mem_handler,
                                         nixlBackendMD *&md,
@@ -37,7 +37,7 @@ SetupBackendTestFixture::backendAllocReg(nixlBackendEngine *engine,
     nixlBlobDesc desc;
     nixl_status_t ret;
 
-    mem_handler = std::make_unique<MemoryHandler>(MemType, dev_id);
+    mem_handler = std::make_unique<MemoryHandler>(mem_type, dev_id);
 
     try {
         mem_handler->allocate(len);
@@ -49,9 +49,9 @@ SetupBackendTestFixture::backendAllocReg(nixlBackendEngine *engine,
 
     mem_handler->populateBlobDesc(&desc);
 
-    NIXL_INFO << "Registering memory type " << MemType << " with length " << len << " and device ID " << dev_id;
+    NIXL_INFO << "Registering memory type " << mem_handler->getMemType() << " with length " << len << " and device ID " << dev_id;
 
-    ret = engine->registerMem(desc, MemType, md);
+    ret = engine->registerMem(desc, mem_handler->getMemType(), md);
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR << "Failed to register memory: " << ret;
         return ret;
@@ -60,7 +60,6 @@ SetupBackendTestFixture::backendAllocReg(nixlBackendEngine *engine,
     return NIXL_SUCCESS;
 }
 
-template<nixl_mem_t MemType>
 nixl_status_t
 SetupBackendTestFixture::backendDeregDealloc(nixlBackendEngine *engine,
                                              std::unique_ptr<MemoryHandler>& mem_handler,
@@ -68,7 +67,7 @@ SetupBackendTestFixture::backendDeregDealloc(nixlBackendEngine *engine,
                                              int dev_id) {
     nixl_status_t ret;
 
-    NIXL_INFO << "Deregistering memory type " << MemType << " with device ID " << dev_id;
+    NIXL_INFO << "Deregistering memory type " << mem_handler->getMemType() << " with device ID " << dev_id;
 
     ret = engine->deregisterMem(md);
     if (ret != NIXL_SUCCESS) {
@@ -83,26 +82,14 @@ SetupBackendTestFixture::backendDeregDealloc(nixlBackendEngine *engine,
 
 void
 SetupBackendTestFixture::ResetLocalBuf() {
-    if (resetLocalBufCallback_) {
-        resetLocalBufCallback_();
-    }
+    localMemHandler_->reset();
 }
 
 bool
 SetupBackendTestFixture::CheckLocalBuf() {
-    for (size_t i = 0; i < BUF_SIZE; i++) {
-        // uint8_t expected_byte = (uint8_t)LOCAL_BUF_BYTE + i;
-        // if (((uint8_t *)localMemBuf_)[i] != expected_byte) { // TODO
-        //     NIXL_ERROR << absl::StrFormat("Verification failed at index %d! local: %x, expected: %x",
-        //         i, ((uint8_t *)localMemBuf_)[i], expected_byte);
-        //     return false;
-        // }
-    }
-    NIXL_INFO << "OK";
-    return true;
+    return localMemHandler_->check(LOCAL_BUF_BYTE);
 }
 
-template<nixl_mem_t MemType>
 void
 SetupBackendTestFixture::populateDescList(nixl_meta_dlist_t &descs,
                                           std::unique_ptr<MemoryHandler>& mem_handler,
@@ -157,20 +144,17 @@ SetupBackendTestFixture::SetupNotifs(std::string msg) {
     optionalXferArgs_.hasNotif = true;
 }
 
-template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
 bool
-SetupBackendTestFixture::PrepXferMem(bool is_remote) {
+SetupBackendTestFixture::PrepXferMem(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool is_remote) {
     nixl_status_t ret;
 
-    ret = backendAllocReg<LocalMemType>
-            (backend_engine_.get(), BUF_SIZE, localMemHandler_, localMD_, localDevId_);
+    ret = backendAllocReg(backend_engine_.get(), local_mem_type, BUF_SIZE, localMemHandler_, localMD_, localDevId_);
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR << "Failed to register local memory";
         return false;
     }
 
-    ret = backendAllocReg<XferMemType>(
-            xferBackendEngine_, BUF_SIZE, xferMemHandler_, xferMD_, xferDevId_);
+    ret = backendAllocReg(xferBackendEngine_, xfer_mem_type, BUF_SIZE, xferMemHandler_, xferMD_, xferDevId_);
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR << "Failed to register xfer memory";
         return false;
@@ -178,9 +162,7 @@ SetupBackendTestFixture::PrepXferMem(bool is_remote) {
 
     if (is_remote) {
         nixlBlobDesc info;
-        // info.addr = (uintptr_t)xferMemHandler_->getAddr(); // TODO: add this back in
-        info.len = BUF_SIZE;
-        info.devId = xferDevId_;
+        xferMemHandler_->populateBlobDesc(&info);
         ret = backend_engine_->getPublicData(xferMD_, info.metaInfo);
         if (ret != NIXL_SUCCESS) {
             NIXL_ERROR << "Failed to get meta info";
@@ -191,7 +173,7 @@ SetupBackendTestFixture::PrepXferMem(bool is_remote) {
             return false;
         }
 
-        ret = backend_engine_->loadRemoteMD(info, XferMemType, xferAgent_, xferLoadedMem_);
+        ret = backend_engine_->loadRemoteMD(info, xfer_mem_type, xferAgent_, xferLoadedMem_);
     } else {
         ret = backend_engine_->loadLocalMD(xferMD_, xferLoadedMem_);
     }
@@ -200,10 +182,10 @@ SetupBackendTestFixture::PrepXferMem(bool is_remote) {
         return false;
     }
 
-    reqSrcDescs_ = std::make_unique<nixl_meta_dlist_t>(LocalMemType);
-    reqDstDescs_ = std::make_unique<nixl_meta_dlist_t>(XferMemType);
-    populateDescList<LocalMemType>(*reqSrcDescs_, localMemHandler_, localMD_, localDevId_);
-    populateDescList<XferMemType>(*reqDstDescs_, xferMemHandler_, xferLoadedMem_, xferDevId_);
+    reqSrcDescs_ = std::make_unique<nixl_meta_dlist_t>(local_mem_type);
+    reqDstDescs_ = std::make_unique<nixl_meta_dlist_t>(xfer_mem_type);
+    populateDescList(*reqSrcDescs_, localMemHandler_, localMD_, localDevId_);
+    populateDescList(*reqDstDescs_, xferMemHandler_, xferLoadedMem_, xferDevId_);
 
     localMemHandler_->set(LOCAL_BUF_BYTE);
     xferMemHandler_->set(XFER_BUF_BYTE);
@@ -335,28 +317,13 @@ SetupBackendTestFixture::TeardownXfer() {
         return false;
     }
 
-    if (teardownCallback_) {
-        if (!teardownCallback_()) {
-            NIXL_ERROR << "Teardown callback failed";
-            return false;
-        }
-    }
-
-    return true;
-}
-
-template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
-bool
-SetupBackendTestFixture::DeregDeallocCallback() {
-    nixl_status_t ret;
-
-    ret = backendDeregDealloc<XferMemType>(xferBackendEngine_, xferMemHandler_, xferMD_, xferDevId_);
+    ret = backendDeregDealloc(xferBackendEngine_, xferMemHandler_, xferMD_, xferDevId_);
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR << "Failed to deallocate xfer memory";
         return false;
     }
 
-    ret = backendDeregDealloc<LocalMemType>(backend_engine_.get(), localMemHandler_, localMD_, localDevId_);
+    ret = backendDeregDealloc(backend_engine_.get(), localMemHandler_, localMD_, localDevId_);
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR << "Failed to deallocate local memory";
         return false;
@@ -365,9 +332,8 @@ SetupBackendTestFixture::DeregDeallocCallback() {
     return true;
 }
 
-template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
 bool
-SetupBackendTestFixture::SetupLocalXfer() {
+SetupBackendTestFixture::SetupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type) {
     CHECK(backend_engine_->supportsLocal()) << "Backend engine does not support local transfers";
 
     xferBackendEngine_ = backend_engine_.get();
@@ -379,18 +345,10 @@ SetupBackendTestFixture::SetupLocalXfer() {
         SetupNotifs("Test");
     }
 
-    if (!PrepXferMem<LocalMemType, XferMemType>(false /* local xfer */)) {
+    if (!PrepXferMem(local_mem_type, xfer_mem_type, false /* local xfer */)) {
         NIXL_ERROR << "Failed to prepare transfer";
         return false;
     }
-
-    teardownCallback_ = [this]() {
-        return DeregDeallocCallback<LocalMemType, XferMemType>();
-    };
-
-    resetLocalBufCallback_ = [this]() {
-        localMemHandler_->set(0x00);
-    };
 
     return true;
 }
@@ -410,9 +368,8 @@ SetupBackendTestFixture::TestLocalXfer(nixl_xfer_op_t op) {
     return true;
 }
 
-template<nixl_mem_t LocalMemType, nixl_mem_t XferMemType>
 bool
-SetupBackendTestFixture::SetupRemoteXfer() {
+SetupBackendTestFixture::SetupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type) {
     CHECK(backend_engine_->supportsRemote()) << "Backend engine does not support remote transfers";
 
     xferBackendEngine_ = remote_backend_engine_.get();
@@ -429,18 +386,10 @@ SetupBackendTestFixture::SetupRemoteXfer() {
         SetupNotifs("Test");
     }
 
-    if (!PrepXferMem<LocalMemType, XferMemType>(true /* remote xfer */)) {
+    if (!PrepXferMem(local_mem_type, xfer_mem_type, true /* remote xfer */)) {
         NIXL_ERROR << "Failed to prepare transfer";
         return false;
     }
-
-    teardownCallback_ = [this]() {
-        return DeregDeallocCallback<LocalMemType, XferMemType>();
-    };
-
-    resetLocalBufCallback_ = [this]() {
-        localMemHandler_->set(0x00);
-    };
 
     return true;
 }
@@ -477,12 +426,5 @@ SetupBackendTestFixture::TestGenNotif(std::string msg) {
 
     return true;
 }
-
-// Explicit template instantiations
-template nixl_status_t plugins_common::SetupBackendTestFixture::backendAllocReg<DRAM_SEG>(nixlBackendEngine *engine, size_t len, std::unique_ptr<MemoryHandler>& mem_handler, nixlBackendMD *&md, int dev_id);
-template nixl_status_t plugins_common::SetupBackendTestFixture::backendAllocReg<OBJ_SEG>(nixlBackendEngine *engine, size_t len, std::unique_ptr<MemoryHandler>& mem_handler, nixlBackendMD *&md, int dev_id);
-template bool plugins_common::SetupBackendTestFixture::DeregDeallocCallback<DRAM_SEG, OBJ_SEG>();
-template bool plugins_common::SetupBackendTestFixture::SetupLocalXfer<DRAM_SEG, OBJ_SEG>();
-template bool plugins_common::SetupBackendTestFixture::PrepXferMem<DRAM_SEG, OBJ_SEG>(bool is_remote);
 
 } // namespace plugins_common
