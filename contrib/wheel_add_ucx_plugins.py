@@ -23,10 +23,10 @@ import os
 import shutil
 import tempfile
 import zipfile
+import logging
 
-from nixl.logging import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def extract_wheel(wheel_path):
