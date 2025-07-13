@@ -18,8 +18,6 @@
 #define __MEMORY_HANDLER_H
 
 #include "backend/backend_aux.h"
-#include "absl/log/check.h"
-#include "common/nixl_log.h"
 
 class MemoryHandler {
 private:
@@ -32,118 +30,25 @@ public:
     MemoryHandler(nixl_mem_t memType, int devId) : memType_(memType), devId_(devId) {}
 
     void
-    allocate(size_t len) {
-        switch (memType_) {
-            case DRAM_SEG:
-                addr_ = new char[len];
-                break;
-            case OBJ_SEG:
-                addr_ = nullptr;
-                break;
-            default:
-                CHECK(false) << "Unsupported memory type!";
-                break;
-        }
-        len_ = len;
-    }
+    allocate(size_t len);
 
     void
-    deallocate() {
-        switch (memType_) {
-            case DRAM_SEG:
-                delete[] static_cast<char *>(addr_);
-                break;
-            case OBJ_SEG:
-                break;
-            default:
-                CHECK(false) << "Unsupported memory type!";
-                break;
-        }
-    }
+    deallocate();
 
     void
-    set(char byte) {
-        switch (memType_) {
-            case DRAM_SEG:
-                for (size_t i = 0; i < len_; i++)
-                    ((char *)addr_)[i] = byte + i;
-                break;
-            case OBJ_SEG:
-                break;
-            default:
-                CHECK(false) << "Unsupported memory type!";
-                break;
-        }
-    }
-    
+    set(char byte);
+
     bool
-    check(char byte) {
-        switch (memType_) {
-            case DRAM_SEG:
-                for (size_t i = 0; i < len_; i++) {
-                    uint8_t expected_byte = (uint8_t)byte + i;
-                    if (((char *)addr_)[i] != expected_byte) {
-                        NIXL_ERROR << "Verification failed at index " << i << "! local: " << ((char *)addr_)[i] << ", expected: " << expected_byte;
-                        return false;
-                    }
-                }
-                break;
-            case OBJ_SEG:
-                break;
-            default:
-                CHECK(false) << "Unsupported memory type!";
-                break;
-        }
-        return true;
-    }
+    check(char byte);
 
     void
-    reset() {
-        switch (memType_) {
-            case DRAM_SEG:
-                memset(addr_, 0x00, len_);
-                break;
-            case OBJ_SEG:
-                break;
-            default:
-                CHECK(false) << "Unsupported memory type!";
-                break;
-        }
-    }
-    
-    void
-    populateBlobDesc(nixlBlobDesc *desc) {
-        switch (memType_) {
-            case DRAM_SEG:
-                break;
-            case OBJ_SEG:
-                desc->metaInfo = "test-obj-key";
-                break;
-            default:
-                CHECK(false) << "Unsupported memory type!";
-                break;
-        }
-        desc->addr = reinterpret_cast<uintptr_t>(addr_);
-        desc->len = len_;
-        desc->devId = devId_;
-    }
+    reset();
 
     void
-    populateMetaDesc(nixlMetaDesc *desc, nixlBackendMD *&md) {
-        switch (memType_) {
-            case DRAM_SEG:
-                break;
-            case OBJ_SEG:
-                break;
-            default:
-                CHECK(false) << "Unsupported memory type!";
-                break;
-        }
-        desc->addr = reinterpret_cast<uintptr_t>(addr_);
-        desc->len = len_;
-        desc->devId = devId_;
-        desc->metadataP = md;
-    }
+    populateBlobDesc(nixlBlobDesc *desc);
+
+    void
+    populateMetaDesc(nixlMetaDesc *desc, nixlBackendMD *&md);
 
     nixl_mem_t
     getMemType() {
