@@ -22,6 +22,7 @@
 
 #include <optional>
 #include <limits>
+#include <list>
 #include <string.h>
 #include <unistd.h>
 #include "absl/strings/numbers.h"
@@ -321,6 +322,7 @@ protected:
     nixlUcxWorker *worker;
     size_t worker_id;
     size_t num_chunks;
+    std::atomic<bool> is_completed;
 
     // Notification to be sent after completion of all requests
     struct Notif {
@@ -332,6 +334,24 @@ protected:
     std::optional<Notif> notif;
 
 public:
+    // TODO: make this configurable?
+    static constexpr uint64_t MAX_PROGRESS = 1000;
+
+    nixlUcxBackendH() :
+        worker(nullptr), worker_id(UINT64_MAX), num_chunks(1), is_completed(true) {}
+
+    nixlUcxBackendH(nixlUcxWorker *worker_, size_t worker_id_) :
+        worker(worker_), worker_id(worker_id_), num_chunks(1), is_completed(true) {}
+
+    nixlUcxBackendH(nixlUcxBackendH &&other) noexcept :
+        head(std::move(other.head)),
+        worker(other.worker),
+        worker_id(other.worker_id),
+        num_chunks(other.num_chunks),
+        is_completed(other.is_completed.load()),
+        notif(std::move(other.notif)) {
+    }
+
     auto& notification() {
         return notif;
     }
@@ -340,15 +360,20 @@ public:
         return num_chunks;
     }
 
-    nixlUcxBackendH() : worker(nullptr), worker_id(0), num_chunks(1) {}
-
-    nixlUcxBackendH(nixlUcxWorker *worker_, size_t worker_id_):
-        worker(worker_), worker_id(worker_id_), num_chunks(1) {}
-
-    void setWorker(nixlUcxWorker *worker_, size_t worker_id_) {
-        NIXL_ASSERT(worker_ == nullptr && "worker already set");
+    void start(nixlUcxWorker *worker_, size_t worker_id_) {
         worker = worker_;
         worker_id = worker_id_;
+        is_completed.store(false);
+    }
+
+    void complete() {
+        worker = nullptr;
+        worker_id = UINT64_MAX;
+        is_completed.store(true);
+    }
+
+    bool isCompleted() const {
+        return is_completed.load();
     }
 
     void append(nixlUcxIntReq *req) {
@@ -378,7 +403,7 @@ public:
         return NIXL_SUCCESS;
     }
 
-    virtual nixl_status_t status() {
+    virtual nixl_status_t status(uint64_t maxProgress = MAX_PROGRESS) {
         nixlUcxIntReq *req = head.next();
         nixl_status_t out_ret = NIXL_SUCCESS;
 
@@ -388,7 +413,7 @@ public:
         }
 
         /* Maximum progress */
-        while (worker->progress());
+        for (uint64_t i = 0; i < maxProgress && worker->progress(); i++);
 
         /* Go over all request updating their status */
         while (req) {
@@ -611,12 +636,25 @@ class nixlUcxCompositeBackendH : public nixlUcxBackendH {
 
         nixl_status_t release() override {
             // TODO: release all chunks
-            return NIXL_SUCCESS;
+            return nixlUcxBackendH::release();
         }
 
-        nixl_status_t status() override {
-            // TODO: return status of all chunks
-            return NIXL_SUCCESS;
+        nixl_status_t status(uint64_t maxProgress = MAX_PROGRESS) override {
+            nixl_status_t ret = nixlUcxBackendH::status(maxProgress);
+            if (ret == NIXL_SUCCESS) {
+                bool allCompleted = true;
+                // TODO: iterate only incomplete chunks
+                for (auto &chunk : m_chunks) {
+                    if (!chunk.isCompleted()) {
+                        allCompleted = false;
+                        break;
+                    }
+                }
+                if (!allCompleted) {
+                    ret = NIXL_IN_PROG;
+                }
+            }
+            return ret;
         }
 
     private:
@@ -634,7 +672,28 @@ class nixlUcxThreadContext {
         // keep io_context alive even if queue is temporarily empty
         auto guard = asio::make_work_guard(m_io);
         while (!m_io.stopped()) {
-            m_io.run();
+            // If there are pending requests, poll task queue in order to prioritize
+            // new post requests over pending requests
+            if (!m_requests.empty()) {
+                m_io.poll_one();
+            } else {
+                // Otherwise blocking wait for new requests
+                m_io.run_one();
+            }
+
+            if (m_requests.empty()) {
+                continue;
+            }
+
+            size_t maxProgress = nixlUcxBackendH::MAX_PROGRESS / m_requests.size();
+            for (auto it = m_requests.begin(); it != m_requests.end();) {
+                if ((*it)->status(maxProgress) == NIXL_SUCCESS) {
+                    (*it)->complete();
+                    it = m_requests.erase(it);
+                } else {
+                    ++it;
+                }
+            }
         }
     }
 
@@ -650,10 +709,16 @@ class nixlUcxThreadContext {
         return *tlsCtx;
     }
 
+    void addRequest(nixlUcxBackendH *handle) {
+        m_requests.push_back(handle);
+    }
+
     private:
         asio::io_context &m_io;
         nixlUcxWorker &m_worker;
         size_t m_workerId;
+        // TODO: make it intrusive
+        std::list<nixlUcxBackendH *> m_requests;
 
         static thread_local nixlUcxThreadContext* tlsCtx;
 };
@@ -739,7 +804,7 @@ nixlUcxThreadPoolEngine::sendXferRange(const nixl_xfer_op_t &operation,
         m_io->post([&, i]() {
             nixlUcxThreadContext& ctx = nixlUcxThreadContext::getCtx();
             nixlUcxBackendH *chunkHandle = compHandle->getChunk(i);
-            chunkHandle->setWorker(&ctx.getWorker(), ctx.getWorkerId());
+            chunkHandle->start(&ctx.getWorker(), ctx.getWorkerId());
 
             size_t startIdx = i * chunkSize;
             size_t endIdx = std::min(startIdx + chunkSize, (size_t)local.descCount());
@@ -747,7 +812,12 @@ nixlUcxThreadPoolEngine::sendXferRange(const nixl_xfer_op_t &operation,
             ret = nixlUcxEngine::sendXferRange(operation, local, remote, remote_agent,
                                                chunkHandle, startIdx, endIdx);
             if (ret != NIXL_SUCCESS) {
+                // TODO: test error handling
                 status.store(ret);
+                chunkHandle->release();
+                chunkHandle->complete();
+            } else {
+                ctx.addRequest(chunkHandle);
             }
 
             if (remaining.fetch_sub(1) == 1) {
@@ -1318,7 +1388,7 @@ nixl_status_t nixlUcxEngine::postXfer (const nixl_xfer_op_t &operation,
         return NIXL_ERR_INVALID_PARAM;
     }
 
-    // TODO: assert that intHandle is empty/completed, we cannot post request before completion
+    // TODO: assert that handle is empty/completed, as we can't post request before completion
 
     ret = sendXferRange(operation, local, remote, remote_agent, handle, 0, lcnt);
     if (ret != NIXL_SUCCESS) {
