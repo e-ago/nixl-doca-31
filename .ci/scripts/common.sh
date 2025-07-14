@@ -22,7 +22,8 @@
 # Check test script usage
 # Parse commandline arguments with first argument being the install directory.
 #
-check_usage_install_dir(INSTALL_DIR) {
+check_usage_install_dir() {
+    INSTALL_DIR=$1
     if [ -z "$INSTALL_DIR" ]; then
         echo "Usage: $0 <install_dir>"
         exit 1
@@ -32,7 +33,9 @@ check_usage_install_dir(INSTALL_DIR) {
 #
 # Set environment variables for the build
 #
-set_env(INSTALL_DIR) {
+set_env() {
+    INSTALL_DIR=$1
+
     ARCH=$(uname -m)
     [ "$ARCH" = "arm64" ] && ARCH="aarch64"
 
