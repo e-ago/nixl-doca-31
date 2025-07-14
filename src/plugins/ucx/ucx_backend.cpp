@@ -315,6 +315,8 @@ static void _internalRequestReset(nixlUcxIntReq *req) {
 
 class nixlUcxBackendH : public nixlBackendReqH {
 protected:
+    // TODO: use std::vector here for a single allocation and cache friendly
+    // traversal
     nixlUcxIntReq head;
     const nixlUcxEngine &eng;
     size_t worker_id;
@@ -1087,6 +1089,8 @@ static nixl_status_t _retHelper(nixl_status_t ret,  nixlUcxBackendH *hndl, nixlU
     /* if transfer wasn't immediately completed */
     switch(ret) {
         case NIXL_IN_PROG:
+            // TODO: this cast does not look safe
+            // We need to allocate a vector of nixlUcxIntReq and set nixlUcxReqt
             hndl->append((nixlUcxIntReq*)req);
         case NIXL_SUCCESS:
             // Nothing to do
@@ -1186,18 +1190,27 @@ nixl_status_t nixlUcxEngine::postXfer (const nixl_xfer_op_t &operation,
     nixlUcxReq req;
     size_t workerId = intHandle->getWorkerId();
 
-    if (lcnt != rcnt) {
+    if (lcnt == 0) {
+        NIXL_ERROR << "Local descriptor list is empty";
         return NIXL_ERR_INVALID_PARAM;
     }
+
+    if (lcnt != rcnt) {
+        NIXL_ERROR << "Local (" << lcnt << ") and remote (" << rcnt << ") descriptor lists differ in size";
+        return NIXL_ERR_INVALID_PARAM;
+    }
+
+    // TODO: assert that intHandle is empty/completed, we cannot post request before completion
 
     for(i = 0; i < lcnt; i++) {
         void *laddr = (void*) local[i].addr;
         size_t lsize = local[i].len;
-        void *raddr = (void*) remote[i].addr;
+        uint64_t raddr = (uint64_t) remote[i].addr;
         size_t rsize = remote[i].len;
 
         lmd = (nixlUcxPrivateMetadata*) local[i].metadataP;
         rmd = (nixlUcxPublicMetadata*) remote[i].metadataP;
+        auto &ep = rmd->conn->getEp(workerId);
 
         if (lsize != rsize) {
             return NIXL_ERR_INVALID_PARAM;
@@ -1205,10 +1218,10 @@ nixl_status_t nixlUcxEngine::postXfer (const nixl_xfer_op_t &operation,
 
         switch (operation) {
         case NIXL_READ:
-            ret = rmd->conn->getEp(workerId)->read((uint64_t) raddr, rmd->getRkey(workerId), laddr, lmd->mem, lsize, req);
+            ret = ep->read(raddr, rmd->getRkey(workerId), laddr, lmd->mem, lsize, req);
             break;
         case NIXL_WRITE:
-            ret = rmd->conn->getEp(workerId)->write(laddr, lmd->mem, (uint64_t) raddr, rmd->getRkey(workerId), lsize, req);
+            ret = ep->write(laddr, lmd->mem, raddr, rmd->getRkey(workerId), lsize, req);
             break;
         default:
             return NIXL_ERR_INVALID_PARAM;
