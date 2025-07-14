@@ -42,7 +42,7 @@ public:
     populateBlobDesc(nixlBlobDesc *desc, int buf_index = 0);
 
     void
-    populateMetaDesc(nixlMetaDesc *desc, nixlBackendMD *&md);
+    populateMetaDesc(nixlMetaDesc *desc, int entry_index, size_t entry_size);
 
     nixl_mem_t
     getMemType() {

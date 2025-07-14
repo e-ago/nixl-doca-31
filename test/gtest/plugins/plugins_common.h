@@ -47,10 +47,10 @@ protected:
     checkLocalBuf();
 
     bool
-    setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, int num_bufs = 1);
+    setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool split_buf = true, int num_bufs = 1);
 
     bool
-    setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, int num_bufs = 1);
+    setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool split_buf = true, int num_bufs = 1);
 
     bool
     testXfer(nixl_xfer_op_t op);
@@ -95,6 +95,7 @@ private:
     std::string localAgent_;
     std::string xferAgent_;
     bool isSetup_ = false;
+    bool split_buf_;
     int localDevId_;
     int xferDevId_;
     int num_bufs_;

@@ -104,32 +104,35 @@ void
 MemoryHandler::populateBlobDesc(nixlBlobDesc *desc, int buf_index) {
     switch (memType_) {
         case DRAM_SEG:
+            desc->addr = reinterpret_cast<uintptr_t>(addr_);
             break;
         case OBJ_SEG:
+            desc->addr = 0;
             desc->metaInfo = "test-obj-key-" + std::to_string(buf_index);
             break;
         default:
             CHECK(false) << "Unsupported memory type!";
             break;
     }
-    desc->addr = reinterpret_cast<uintptr_t>(addr_);
     desc->len = len_;
     desc->devId = devId_;
 }
 
 void
-MemoryHandler::populateMetaDesc(nixlMetaDesc *desc, nixlBackendMD *&md) {
+MemoryHandler::populateMetaDesc(nixlMetaDesc *desc, int entry_index, size_t entry_size) {
     switch (memType_) {
         case DRAM_SEG:
+            desc->addr = reinterpret_cast<uintptr_t>(addr_) + entry_index * entry_size;
+            desc->len = entry_size;
             break;
         case OBJ_SEG:
+            desc->addr = 0;
+            desc->len = len_;
             break;
         default:
             CHECK(false) << "Unsupported memory type!";
             break;
     }
-    desc->addr = reinterpret_cast<uintptr_t>(addr_);
-    desc->len = len_;
     desc->devId = devId_;
-    desc->metadataP = md;
+    desc->metadataP = md_;
 }

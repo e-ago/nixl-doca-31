@@ -34,9 +34,6 @@ SetupBackendTestFixture::backendAllocReg(nixlBackendEngine *engine,
                                         std::unique_ptr<MemoryHandler>& mem_handler,
                                         int buf_index,
                                         int dev_id) {
-    nixlBlobDesc desc;
-    nixl_status_t ret;
-
     mem_handler = std::make_unique<MemoryHandler>(mem_type, dev_id + buf_index);
 
     try {
@@ -47,12 +44,14 @@ SetupBackendTestFixture::backendAllocReg(nixlBackendEngine *engine,
         return NIXL_ERR_BACKEND;
     }
 
+    nixlBlobDesc desc;
     mem_handler->populateBlobDesc(&desc, buf_index);
 
     NIXL_INFO << "Registering memory type " << mem_handler->getMemType() << " with length "
         << len << " and device ID " << mem_handler->getDevId();
 
     nixlBackendMD *md;
+    nixl_status_t ret;
     ret = engine->registerMem(desc, mem_handler->getMemType(), md);
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR << "Failed to register memory: " << ret;
@@ -99,11 +98,15 @@ SetupBackendTestFixture::checkLocalBuf() {
 void
 SetupBackendTestFixture::populateDescList(nixl_meta_dlist_t &descs,
                                           std::unique_ptr<MemoryHandler> mem_handler[]) {
-    for (int i = 0; i < num_bufs_; i++) {
-        nixlMetaDesc req;
-        nixlBackendMD *md = mem_handler[i]->getMD();
-        mem_handler[i]->populateMetaDesc(&req, md);
-        descs.addDesc(req);
+    int num_entries = split_buf_ ? NUM_ENTRIES : 1;
+    int entry_size = split_buf_ ? ENTRY_SIZE : BUF_SIZE;
+
+    for (int buf_i = 0; buf_i < num_bufs_; buf_i++) {
+        for (int entry_i = 0; entry_i < num_entries; entry_i++) {
+            nixlMetaDesc desc;
+            mem_handler[buf_i]->populateMetaDesc(&desc, entry_i, entry_size);
+            descs.addDesc(desc);
+        }
     }
 }
 
@@ -344,12 +347,13 @@ SetupBackendTestFixture::teardownXfer() {
 }
 
 bool
-SetupBackendTestFixture::setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, int num_bufs) {
+SetupBackendTestFixture::setupLocalXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool split_buf, int num_bufs) {
     CHECK(backend_engine_->supportsLocal()) << "Backend engine does not support local transfers";
     CHECK(num_bufs <= (int)MAX_NUM_BUFS) << "Number of buffers exceeds maximum number of buffers";
 
     xferBackendEngine_ = backend_engine_.get();
     xferAgent_ = localAgent_;
+    split_buf_ = split_buf;
     num_bufs_ = num_bufs;
     localDevId_ = 0;
     xferDevId_ = 0;
@@ -382,12 +386,13 @@ SetupBackendTestFixture::testLocalXfer(nixl_xfer_op_t op) {
 }
 
 bool
-SetupBackendTestFixture::setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, int num_bufs) {
+SetupBackendTestFixture::setupRemoteXfer(nixl_mem_t local_mem_type, nixl_mem_t xfer_mem_type, bool split_buf, int num_bufs) {
     CHECK(backend_engine_->supportsRemote()) << "Backend engine does not support remote transfers";
     CHECK(num_bufs <= (int)MAX_NUM_BUFS) << "Number of buffers exceeds maximum number of buffers";
 
     xferBackendEngine_ = remote_backend_engine_.get();
     xferAgent_ = remoteAgent_;
+    split_buf_ = split_buf;
     num_bufs_ = num_bufs;
     localDevId_ = 0;
     xferDevId_ = 1;
