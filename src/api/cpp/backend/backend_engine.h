@@ -186,11 +186,11 @@ class nixlBackendEngine {
         virtual int progress() { return 0; }
 
 
-        // *** Optional virtual methods that is good to be implemented by any backend *** //
+        // *** Optional virtual methods that are good to be implemented in any backend *** //
 
         // Query information about a list of memory/storage
         virtual nixl_status_t
-        queryMem(const nixl_reg_dlist_t &descs, std::vector<nixl_query_resp_t> *&resp) const {
+        queryMem(const nixl_reg_dlist_t &descs, std::vector<nixl_query_resp_t> &resp) const {
             return NIXL_ERR_NOT_SUPPORTED;
         }
 

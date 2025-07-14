@@ -145,7 +145,7 @@ enum class nixl_cost_t {
 };
 
 /**
- * @struct nixlQuery
+ * @struct nixlQueryResp
  * @brief A structure for querying memory results
  */
 struct nixlQueryResp {

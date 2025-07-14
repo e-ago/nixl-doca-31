@@ -301,7 +301,7 @@ nixlAgent::createBackend(const nixl_backend_t &type,
 
 nixl_status_t
 nixlAgent::queryMem(const nixl_reg_dlist_t &descs,
-                    std::vector<nixl_query_resp_t> *&resp,
+                    std::vector<nixl_query_resp_t> &resp,
                     const nixl_opt_args_t *extra_params) const {
 
     if (!extra_params || extra_params->backends.size() != 1) {

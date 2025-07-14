@@ -110,14 +110,14 @@ class nixlAgent {
          *         The backend should be specified via extra_params.
          *
          * @param  descs         Descriptor list of the buffers to be queried
+         * @param  resp [out]    The output information for the queried descs
          * @param  extra_params  Additional parameters used in querying memory,
          *                       such as indicating the backend
-         * @param  resp [out]    The output information for the queried descs
          * @return nixl_status_t Error code if call was not successful
          */
         nixl_status_t
         queryMem(const nixl_reg_dlist_t &descs,
-                 std::vector<nixl_query_resp_t> *&resp,
+                 std::vector<nixl_query_resp_t> &resp,
                  const nixl_opt_args_t *extra_params) const;
         /**
          * @brief  Register a memory/storage with NIXL. If a list of backends hints is provided
