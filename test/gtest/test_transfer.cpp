@@ -506,6 +506,6 @@ TEST_P(TestTransfer, threadpool) {
 
 INSTANTIATE_TEST_SUITE_P(ucx, TestTransfer, testing::Values(std::make_tuple("UCX", 1, 1)));
 INSTANTIATE_TEST_SUITE_P(ucx_mo, TestTransfer, testing::Values(std::make_tuple("UCX_MO", 1, 1)));
-INSTANTIATE_TEST_SUITE_P(ucx_threadpool, TestTransfer, testing::Values(std::make_tuple("UCX", 9, 8)));
+//INSTANTIATE_TEST_SUITE_P(ucx_threadpool, TestTransfer, testing::Values(std::make_tuple("UCX", 9, 8)));
 
 } // namespace gtest

@@ -164,6 +164,14 @@ class nixlUcxEngine
             return std::hash<std::thread::id>{}(std::this_thread::get_id()) % uws.size();
         }
 
+        virtual nixl_status_t
+        sendXferRange(const nixl_xfer_op_t &operation,
+                      const nixl_meta_dlist_t &local,
+                      const nixl_meta_dlist_t &remote,
+                      const std::string &remote_agent,
+                      nixlBackendReqH *handle,
+                      size_t start_idx, size_t end_idx) const;
+
         nixlUcxEngine(const nixlBackendInitParams& init_params);
 
     public:
@@ -295,23 +303,25 @@ class nixlUcxThreadPoolEngine : public nixlUcxEngine {
 
         int vramApplyCtx() override;
 
+        nixl_status_t
+        sendXferRange(const nixl_xfer_op_t &operation,
+                      const nixl_meta_dlist_t &local,
+                      const nixl_meta_dlist_t &remote,
+                      const std::string &remote_agent,
+                      nixlBackendReqH *handle,
+                      size_t start_idx, size_t end_idx) const override;
+
     public:
         nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params);
         ~nixlUcxThreadPoolEngine();
 
-        nixl_status_t prepXfer (const nixl_xfer_op_t &operation,
-                                const nixl_meta_dlist_t &local,
-                                const nixl_meta_dlist_t &remote,
-                                const std::string &remote_agent,
-                                nixlBackendReqH* &handle,
-                                const nixl_opt_b_args_t* opt_args=nullptr) const override;
-
-        nixl_status_t postXfer (const nixl_xfer_op_t &operation,
-                                const nixl_meta_dlist_t &local,
-                                const nixl_meta_dlist_t &remote,
-                                const std::string &remote_agent,
-                                nixlBackendReqH* &handle,
-                                const nixl_opt_b_args_t* opt_args=nullptr) const override;
+        nixl_status_t
+        prepXfer(const nixl_xfer_op_t &operation,
+                 const nixl_meta_dlist_t &local,
+                 const nixl_meta_dlist_t &remote,
+                 const std::string &remote_agent,
+                 nixlBackendReqH* &handle,
+                 const nixl_opt_b_args_t* opt_args=nullptr) const override;
 
         bool supportsProgTh() const override { return true; }
 
