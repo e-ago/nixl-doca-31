@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+source $(dirname $0)/../.ci/scripts/server_port.sh
+
 set -e
 set -x
 
@@ -51,7 +53,11 @@ python3 test/python/prep_xfer_perf.py array
 
 echo "==== Running python example ===="
 cd examples/python
-python3 blocking_send_recv_example.py --mode="target" --ip=127.0.0.1 --port=1234&
+
+blocking_send_recv_port=$server_port
+step_server_port
+
+python3 blocking_send_recv_example.py --mode="target" --ip=127.0.0.1 --port=$blocking_send_recv_port&
 sleep 5
-python3 blocking_send_recv_example.py --mode="initiator" --ip=127.0.0.1 --port=1234
+python3 blocking_send_recv_example.py --mode="initiator" --ip=127.0.0.1 --port=$blocking_send_recv_port
 python3 partial_md_example.py
