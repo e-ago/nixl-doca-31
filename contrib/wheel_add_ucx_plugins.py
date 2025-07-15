@@ -206,18 +206,18 @@ def add_plugins(wheel_path, sys_plugins_dir, install_dirname):
             rpath = "$ORIGIN"
         else:
             rpath = "$ORIGIN:" + rpath
-        logger.debug(f"Setting rpath for {fpath} to {rpath}")
+        logger.debug("Setting rpath for %s to %s", fpath, rpath)
         ret = os.system(f"patchelf --set-rpath '{rpath}' {fpath}")
         if ret != 0:
             raise RuntimeError(f"Failed to set rpath for {fpath}")
 
     pkg_plugins_dir = os.path.join(pkg_libs_dir, install_dirname)
-    logger.debug(f"Copying plugins from {sys_plugins_dir} to {pkg_plugins_dir}")
+    logger.debug("Copying plugins from %s to %s", sys_plugins_dir, pkg_plugins_dir)
     copied_files = copytree(sys_plugins_dir, pkg_plugins_dir)
 
     # Patch all libs to load plugin deps from the wheel
     for fname in copied_files:
-        logger.debug(f"Patching {fname}")
+        logger.debug("Patching %s", fname)
         fpath = os.path.join(pkg_plugins_dir, fname)
         if os.path.isfile(fpath) and ".so" in fname:
             rpath = os.popen(f"patchelf --print-rpath {fpath}").read().strip()

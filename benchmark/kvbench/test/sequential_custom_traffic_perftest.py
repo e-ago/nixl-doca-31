@@ -373,12 +373,12 @@ class SequentialCTPerftest(CTPerftest):
 
         results["metadata"]["finished_ts"] = time.time()
         if json_output_path and self.my_rank == 0:
-            logger.info(f"Saving results to {json_output_path}")
+            logger.info("Saving results to %s", json_output_path)
             with open(json_output_path, "w") as f:
                 json.dump(results, f)
 
         # Destroy
-        logger.info(f"[Rank {self.my_rank}] Finished run, destroying objects")
+        logger.info("[Rank %d] Finished run, destroying objects", self.my_rank)
         self._destroy(handles)
 
     def _write_yaml_results(
@@ -427,6 +427,6 @@ class SequentialCTPerftest(CTPerftest):
         try:
             with open(output_path, "w") as f:
                 yaml.dump(results, f, default_flow_style=False, sort_keys=False)
-            logger.info(f"Results saved to YAML file: {output_path}")
+            logger.info("Results saved to YAML file: %s", output_path)
         except Exception as e:
             logger.error("Failed to write YAML results to %s: %s", output_path, e)

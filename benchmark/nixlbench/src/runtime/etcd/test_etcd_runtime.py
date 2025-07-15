@@ -42,37 +42,37 @@ try:
         rank = runtime.get_rank()
         world_size = runtime.get_world_size()
 
-        logger.info(f"Rank: {rank}, World Size: {world_size}")
+        logger.info("Rank: %d, World Size: %d", rank, world_size)
 
         # Test barrier
-        logger.info(f"Rank {rank}: Before barrier")
+        logger.info("Rank %d: Before barrier", rank)
         runtime.barrier()
-        logger.info(f"Rank {rank}: After barrier")
+        logger.info("Rank %d: After barrier", rank)
 
         # Test allgather
         my_data = {"rank": rank, "message": f"Hello from rank {rank}"}
-        logger.info(f"Rank {rank}: Gathering data...")
+        logger.info("Rank %d: Gathering data...", rank)
 
         try:
             all_data = runtime.allgather_obj(my_data)
-            logger.info(f"Rank {rank}: Gathered data from all ranks:")
+            logger.info("Rank %d: Gathered data from all ranks:", rank)
             for i, data in enumerate(all_data):
-                logger.info(f"  Rank {i}: {data}")
+                logger.info("  Rank %d: %s", i, data)
         except Exception as e:
-            logger.error(f"Rank {rank}: Allgather failed: {e}")
+            logger.error("Rank %d: Allgather failed: %s", rank, e)
 
         # Test barrier again
         runtime.barrier()
-        logger.info(f"Rank {rank}: Test completed successfully!")
+        logger.info("Rank %d: Test completed successfully!", rank)
 
     if __name__ == "__main__":
         test_basic_functionality()
 
 except ImportError as e:
-    logger.error(f"Import error: {e}")
+    logger.error("Import error: %s", e)
     logger.error("Make sure the etcd_runtime module is built and accessible")
     logger.error("Also ensure the etcd server is running at http://localhost:2379")
     sys.exit(1)
 except Exception as e:
-    logger.error(f"Runtime error: {e}")
+    logger.error("Runtime error: %s", e)
     sys.exit(1)
