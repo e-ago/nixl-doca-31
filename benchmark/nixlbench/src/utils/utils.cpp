@@ -64,7 +64,7 @@ DEFINE_int32 (
 DEFINE_int32(num_initiator_dev, 1, "Number of device in initiator process");
 DEFINE_int32(num_target_dev, 1, "Number of device in target process");
 DEFINE_bool(enable_pt, false, "Enable Progress Thread (only used with nixl worker)");
-DEFINE_size_t(progress_threads, 0, "Number of progress threads (default: 0)");
+DEFINE_uint64(progress_threads, 0, "Number of progress threads (default: 0)");
 DEFINE_bool(enable_vmm, false, "Enable VMM memory allocation when DRAM is requested");
 
 // Storage backend(GDS, POSIX, HF3FS) options
