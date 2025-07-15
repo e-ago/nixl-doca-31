@@ -22,7 +22,7 @@
 # Check test script usage
 # Parse commandline arguments with first argument being the install directory.
 #
-check_usage_install_dir() {
+check_install_dir() {
     INSTALL_DIR=$1
     if [ -z "$INSTALL_DIR" ]; then
         echo "Usage: $0 <install_dir>"
@@ -54,13 +54,16 @@ set_env() {
 # function below
 #
 server_port_range=1000
-EXECUTOR_NUMBER=$(($RANDOM % 52)) # TODO: set using environment variable
-server_port_min=$((10500 + EXECUTOR_NUMBER * server_port_range))
+min_port_number=10500
+max_port_number=65535
+EXECUTOR_NUMBER=$(($RANDOM % $(((max_port_number - min_port_number) / server_port_range)))) # TODO: set using environment variable
+server_port_min=$((min_port_number + EXECUTOR_NUMBER * server_port_range))
 server_port_max=$((server_port_min + server_port_range))
 server_port=${server_port_min}
 
-step_server_port() {
+get_next_server_port() {
 	# Cycle server_port between (server_port_min)..(server_port_max-1)
 	server_port=$((server_port + 1))
 	server_port=$((server_port >= server_port_max ? server_port_min : server_port))
+    echo $server_port
 }

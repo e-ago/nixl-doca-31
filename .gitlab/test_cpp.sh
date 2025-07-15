@@ -28,7 +28,7 @@ apt-get -qq install -y libaio-dev
 # Parse commandline arguments with first argument being the install directory.
 INSTALL_DIR=$1
 
-check_usage_install_dir $INSTALL_DIR
+check_install_dir $INSTALL_DIR
 
 set_env $INSTALL_DIR
 
@@ -56,8 +56,7 @@ cd ${INSTALL_DIR}
 ./bin/test_plugin
 
 # Run NIXL client-server test
-nixl_test_port=$server_port
-step_server_port
+nixl_test_port=$(get_next_server_port)
 
 ./bin/nixl_test target 127.0.0.1 $nixl_test_port&
 sleep 1

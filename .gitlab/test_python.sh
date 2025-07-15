@@ -21,7 +21,7 @@ set -x
 
 INSTALL_DIR=$1
 
-check_usage_install_dir $INSTALL_DIR
+check_install_dir $INSTALL_DIR
 
 apt-get -qq install liburing-dev
 
@@ -39,8 +39,7 @@ python3 test/python/prep_xfer_perf.py list
 python3 test/python/prep_xfer_perf.py array
 
 echo "==== Running python example ===="
-blocking_send_recv_port=$server_port
-step_server_port
+blocking_send_recv_port=$(get_next_server_port)
 
 cd examples/python
 python3 blocking_send_recv_example.py --mode="target" --ip=127.0.0.1 --port=$blocking_send_recv_port&
