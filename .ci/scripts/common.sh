@@ -62,8 +62,8 @@ server_port_max=$((server_port_min + server_port_range))
 server_port=${server_port_min}
 
 get_next_server_port() {
-	# Cycle server_port between (server_port_min)..(server_port_max-1)
-	server_port=$((server_port + 1))
-	server_port=$((server_port >= server_port_max ? server_port_min : server_port))
+    # Cycle server_port between (server_port_min)..(server_port_max-1)
+    server_port=$((server_port + 1))
+    server_port=$((server_port >= server_port_max ? server_port_min : server_port))
     echo $server_port
 }
