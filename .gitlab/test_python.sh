@@ -23,7 +23,14 @@ INSTALL_DIR=$1
 
 check_install_dir $INSTALL_DIR
 
-apt-get -qq install liburing-dev
+# For running as user - check if running as root, if not set sudo variable
+if [ "$(id -u)" -ne 0 ]; then
+    SUDO=sudo
+else
+    SUDO=""
+fi
+
+$SUDO apt-get -qq install liburing-dev
 
 set_env $INSTALL_DIR
 
