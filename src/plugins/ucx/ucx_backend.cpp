@@ -676,6 +676,7 @@ class nixlUcxThreadContext {
         // keep io_context alive even if queue is temporarily empty
         auto guard = asio::make_work_guard(m_io);
 
+        // TODO: try single polling thread
         auto workerEvents = [&](auto&& self)->void {
             nixl_status_t status;
             do {
@@ -786,8 +787,10 @@ nixlUcxThreadPoolEngine::prepXfer(const nixl_xfer_op_t &operation,
                                   const nixl_opt_b_args_t* opt_args) const {
     // TODO: find the best split strategy based on batchSize and numThreads
     // Maybe make it configurable
-    const size_t MIN_CHUNK_SIZE = 8;
-    const size_t MAX_CHUNK_SIZE = 256;
+    const char *minEnv = getenv("MIN_CHUNK_SIZE");
+    const char *maxEnv = getenv("MAX_CHUNK_SIZE");
+    size_t MIN_CHUNK_SIZE = (minEnv != NULL) ? atoi(minEnv) : 256;
+    size_t MAX_CHUNK_SIZE = (maxEnv != NULL) ? atoi(maxEnv) : 2048;
 
     size_t batchSize = local.descCount();
     if (batchSize <= MIN_CHUNK_SIZE) {
