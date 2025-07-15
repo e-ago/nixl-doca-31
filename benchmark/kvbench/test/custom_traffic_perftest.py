@@ -25,7 +25,7 @@ from tabulate import tabulate
 from nixl._api import nixl_agent
 from nixl.logging import get_logger
 
-log = get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class NixlHandle:
@@ -62,12 +62,12 @@ class NixlBuffer:
         if shards > 1:
             raise ValueError("Sharding is not supported yet")
 
-        log.debug(
+        logger.debug(
             f"[Rank {dist_rt.get_rank()}] Initializing NixlBuffer with size {size}, device {device}, shards {shards}, fill_value {fill_value}"
         )
         self.buf = torch.full((size,), fill_value, dtype=dtype, device=device)
 
-        log.debug(
+        logger.debug(
             f"[Rank {dist_rt.get_rank()}] Registering memory for buffer {self.buf}"
         )
         self.reg_descs = nixl_agent.get_reg_descs(self.buf)
@@ -137,7 +137,7 @@ class CTPerftest:
 
     def _share_md(self) -> None:
         """Share agent metadata between all ranks. (Need to be run after registering buffers)"""
-        log.debug(f"[Rank {self.my_rank}] Sharing MD")
+        logger.debug(f"[Rank {self.my_rank}] Sharing MD")
         md = self.nixl_agent.get_agent_metadata()
         mds = dist_rt.allgather_obj(md)
         for other_rank, metadata in enumerate(mds):
@@ -202,7 +202,7 @@ class CTPerftest:
 
         send_bufs, recv_bufs = self._get_bufs(tp)
 
-        log.debug(f"[Rank {self.my_rank}] Sharing recv buf descs")
+        logger.debug(f"[Rank {self.my_rank}] Sharing recv buf descs")
         dst_bufs_descs = self._share_recv_buf_descs(recv_bufs)
 
         handles: list[NixlHandle] = []
@@ -212,7 +212,7 @@ class CTPerftest:
 
             xfer_desc = self.nixl_agent.get_xfer_descs(buf)
 
-            log.debug(
+            logger.debug(
                 f"[Rank {self.my_rank}] Initializing xfer for {other} - xfer desc: {xfer_desc}, dst buf desc: {dst_bufs_descs[other]}"
             )
             handle = self.nixl_agent.initialize_xfer(
@@ -268,11 +268,11 @@ class CTPerftest:
             handles = pending
 
     def _destroy(self, handles: list[NixlHandle]):
-        log.debug(f"[Rank {self.my_rank}] Releasing XFER handles")
+        logger.debug(f"[Rank {self.my_rank}] Releasing XFER handles")
         for handle in handles:
             self.nixl_agent.release_xfer_handle(handle.handle)
 
-        log.debug(f"[Rank {self.my_rank}] Removing remote agents")
+        logger.debug(f"[Rank {self.my_rank}] Removing remote agents")
         for other_rank in range(self.world_size):
             if other_rank == self.my_rank:
                 continue
@@ -281,7 +281,7 @@ class CTPerftest:
         self._destroy_buffers()
 
     def _destroy_buffers(self):
-        log.debug(f"[Rank {self.my_rank}] Destroying buffers")
+        logger.debug(f"[Rank {self.my_rank}] Destroying buffers")
         self.send_buf.destroy()
         self.recv_buf.destroy()
 
@@ -301,14 +301,14 @@ class CTPerftest:
         for r, recv_buf in enumerate(recv_bufs):
             if recv_buf is None:
                 if tp.matrix[r][self.my_rank] > 0:
-                    log.error(
+                    logger.error(
                         f"Rank {self.my_rank} expected {tp.matrix[r][self.my_rank]} bytes from rank {r}, but got 0"
                     )
                     raise RuntimeError("Buffer verification failed")
                 continue
 
             if print_recv_buffers:
-                log.info(f"Recv buffer {r}:\n{recv_buf.buf}")
+                logger.info(f"Recv buffer {r}:\n{recv_buf.buf}")
 
             # recv_buf has to be filled with the rank of the sender
             # and its size has to be the same as matrix[r][my_rank]
@@ -337,7 +337,7 @@ class CTPerftest:
         Returns:
             Total execution time in seconds
         """
-        log.debug(f"[Rank {self.my_rank}] Running CT perftest")
+        logger.debug(f"[Rank {self.my_rank}] Running CT perftest")
         self._share_md()
 
         handles, send_bufs, recv_bufs = self._prepare_tp(self.traffic_pattern)
@@ -377,7 +377,7 @@ class CTPerftest:
                     total_size_gb,
                 ]
             ]
-            log.info(
+            logger.info(
                 f"Performance metrics:\n{tabulate(data, headers=headers, floatfmt='.6f')}"
             )
 

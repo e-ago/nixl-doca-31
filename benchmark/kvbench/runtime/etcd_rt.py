@@ -26,7 +26,7 @@ from nixl.logging import get_logger
 
 from .rt_base import ReduceOp, _RTUtils
 
-log = get_logger(__name__)
+logger = get_logger(__name__)
 
 
 def int_to_bytes(val: int) -> bytes:
@@ -76,7 +76,7 @@ class _EtcdDistUtils(_RTUtils):
                 f"Invalid etcd endpoint format: {etcd_endpoints}, expected format is [http://]host[:port]"
             )
 
-        log.info(f"ETCD client initialized with host {host} & port {port}")
+        logger.info(f"ETCD client initialized with host {host} & port {port}")
 
         try:
             self.client = etcd3.client(host=host, port=port)
@@ -84,7 +84,7 @@ class _EtcdDistUtils(_RTUtils):
             raise ValueError(f"Failed to initialize ETCD client: {e}")
 
         if self.rank == 0:
-            log.info(f"Wiping ETCD prefix {self.prefix}")
+            logger.info(f"Wiping ETCD prefix {self.prefix}")
             self.client.delete_prefix(self.prefix)
 
     def destroy_dist(self):
@@ -208,7 +208,7 @@ class _EtcdDistUtils(_RTUtils):
                 val = self.client.get(f"{self.prefix}/all_reduce/{dest_rank}")[0]
                 vals.append(pickle.loads(val))
 
-            log.debug(f"All reduce values: {vals}")
+            logger.debug(f"All reduce values: {vals}")
             if op == ReduceOp.SUM:
                 final_val = [sum(col) for col in zip(*vals)]
             elif op == ReduceOp.AVG:
@@ -236,7 +236,7 @@ class _EtcdDistUtils(_RTUtils):
 
 
 if not os.environ.get("NIXL_ETCD_NAMESPACE"):
-    log.warning(
+    logger.warning(
         "Environment variable NIXL_ETCD_NAMESPACE is not set, using default prefix /nixl/kvbench. "
         "Note that it can lead to conflicts if multiple instances of KVBench are running. "
         "To avoid this, set NIXL_ETCD_NAMESPACE to a unique value for each instance of KVBench. "

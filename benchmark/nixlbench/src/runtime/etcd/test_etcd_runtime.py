@@ -27,14 +27,14 @@ from nixl.logging import get_logger
 # Add the kvbench runtime path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../kvbench/runtime"))
 
-log = get_logger(__name__)
+logger = get_logger(__name__)
 
 try:
     from etcd_rt import _EtcdDistUtils
 
     def test_basic_functionality():
         """Test basic rank and size functionality"""
-        log.info("Testing basic functionality...")
+        logger.info("Testing basic functionality...")
 
         # Initialize runtime - modify size based on how many processes you're running
         runtime = _EtcdDistUtils(etcd_endpoints="http://localhost:2379", size=2)
@@ -42,37 +42,37 @@ try:
         rank = runtime.get_rank()
         world_size = runtime.get_world_size()
 
-        log.info(f"Rank: {rank}, World Size: {world_size}")
+        logger.info(f"Rank: {rank}, World Size: {world_size}")
 
         # Test barrier
-        log.info(f"Rank {rank}: Before barrier")
+        logger.info(f"Rank {rank}: Before barrier")
         runtime.barrier()
-        log.info(f"Rank {rank}: After barrier")
+        logger.info(f"Rank {rank}: After barrier")
 
         # Test allgather
         my_data = {"rank": rank, "message": f"Hello from rank {rank}"}
-        log.info(f"Rank {rank}: Gathering data...")
+        logger.info(f"Rank {rank}: Gathering data...")
 
         try:
             all_data = runtime.allgather_obj(my_data)
-            log.info(f"Rank {rank}: Gathered data from all ranks:")
+            logger.info(f"Rank {rank}: Gathered data from all ranks:")
             for i, data in enumerate(all_data):
-                log.info(f"  Rank {i}: {data}")
+                logger.info(f"  Rank {i}: {data}")
         except Exception as e:
-            log.error(f"Rank {rank}: Allgather failed: {e}")
+            logger.error(f"Rank {rank}: Allgather failed: {e}")
 
         # Test barrier again
         runtime.barrier()
-        log.info(f"Rank {rank}: Test completed successfully!")
+        logger.info(f"Rank {rank}: Test completed successfully!")
 
     if __name__ == "__main__":
         test_basic_functionality()
 
 except ImportError as e:
-    log.error(f"Import error: {e}")
-    log.error("Make sure the etcd_runtime module is built and accessible")
-    log.error("Also ensure the etcd server is running at http://localhost:2379")
+    logger.error(f"Import error: {e}")
+    logger.error("Make sure the etcd_runtime module is built and accessible")
+    logger.error("Also ensure the etcd server is running at http://localhost:2379")
     sys.exit(1)
 except Exception as e:
-    log.error(f"Runtime error: {e}")
+    logger.error(f"Runtime error: {e}")
     sys.exit(1)
