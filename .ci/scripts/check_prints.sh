@@ -14,28 +14,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Check if a repository path is provided as an argument
+# Check if a path is provided as an argument
 if [ -z "$1" ]; then
-  echo "Usage: $0 <path_to_repository>"
-  echo "Example: $0 ~/my_cloned_repo"
+  echo "Usage: $0 <path_to_python_directory>"
+  echo "Example: $0 ./path/to/python/directory"
   exit 1
 fi
 
-REPO_PATH="$1"
+DIR_PATH="$1"
 
 # Validate that the provided path is a directory
-if [ ! -d "$REPO_PATH" ]; then
-  echo "Error: The provided path '$REPO_PATH' is not a valid directory."
+if [ ! -d "$DIR_PATH" ]; then
+  echo "Error: The provided path '$DIR_PATH' is not a valid directory."
   exit 1
 fi
 
-echo "Checking for BUILT-IN 'print()' calls in Python files within: $REPO_PATH"
+echo "Checking for BUILT-IN 'print()' calls in Python files within: $DIR_PATH"
 echo "---------------------------------------------------------------------"
 
 FOUND_PRINT=false
 
 # Find all Python files and process them
-find "$REPO_PATH" -name "*.py" | while read -r py_file; do
+find "$DIR_PATH" -name "*.py" | while read -r py_file; do
   # Use grep to find 'print()' calls with line numbers, then filter out method calls.
   # First grep: finds all occurrences of 'print(' with word boundary.
   # Second grep: filters out lines where 'print(' is preceded by a dot and optional whitespace.
@@ -52,7 +52,7 @@ done
 echo "---------------------------------------------------------------------"
 
 if [ "$FOUND_PRINT" = true ]; then
-  echo "One or more Python files in '$REPO_PATH' contain built-in 'print()' calls."
+  echo "One or more Python files in '$DIR_PATH' contain built-in 'print()' calls."
 else
-  echo "No built-in 'print()' calls found in any Python files within '$REPO_PATH'."
+  echo "No built-in 'print()' calls found in any Python files within '$DIR_PATH'."
 fi

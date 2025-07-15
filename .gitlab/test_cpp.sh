@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source $(dirname $0)/../.ci/scripts/server_port.sh
-
 set -e
 set -x
 TEXT_YELLOW="\033[1;33m"
@@ -68,13 +66,10 @@ cd ${INSTALL_DIR}
 ./bin/gtest
 ./bin/test_plugin
 
-nixl_test_port=$server_port
-step_server_port
-
 # Run NIXL client-server test
-./bin/nixl_test target 127.0.0.1 $nixl_test_port&
+./bin/nixl_test target 127.0.0.1 1234&
 sleep 1
-./bin/nixl_test initiator 127.0.0.1 $nixl_test_port
+./bin/nixl_test initiator 127.0.0.1 1234
 
 echo "${TEXT_YELLOW}==== Disabled tests==="
 echo "./bin/md_streamer disabled"
