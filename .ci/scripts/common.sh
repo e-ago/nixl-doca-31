@@ -57,9 +57,6 @@ server_port_range=1000
 min_port_number=10500
 max_port_number=65535
 
-echo EXECUTOR_NUMBER=$EXECUTOR_NUMBER
-echo CI_CONCURRENT_ID=$CI_CONCURRENT_ID
-
 # GITLAB CI
 if [ -n "$CI_CONCURRENT_ID" ]; then
     EXECUTOR_NUMBER=$CI_CONCURRENT_ID

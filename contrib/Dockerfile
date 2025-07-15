@@ -66,8 +66,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
     RUST_VERSION=1.86.0 \
-    RUSTARCH=${ARCH}-unknown-linux-gnu \
-    CI_CONCURRENT_ID=${CI_CONCURRENT_ID}
+    RUSTARCH=${ARCH}-unknown-linux-gnu
 
 # Download rustup-init and its checksum for the target architecture
 RUN wget --tries=3 --waitretry=5 \
