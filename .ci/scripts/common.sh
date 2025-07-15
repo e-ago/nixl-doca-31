@@ -56,7 +56,21 @@ set_env() {
 server_port_range=1000
 min_port_number=10500
 max_port_number=65535
-EXECUTOR_NUMBER=$(($RANDOM % $(((max_port_number - min_port_number) / server_port_range)))) # TODO: set using environment variable
+
+echo EXECUTOR_NUMBER=$EXECUTOR_NUMBER
+echo CI_CONCURRENT_ID=$CI_CONCURRENT_ID
+
+# GITLAB CI
+if [ -n "$CI_CONCURRENT_ID" ]; then
+    EXECUTOR_NUMBER=$CI_CONCURRENT_ID
+# Jenkins CI
+elif [ -z "$EXECUTOR_NUMBER" ]; then
+    # Fallback to random number if both CI_CONCURRENT_ID and EXECUTOR_NUMBER are not set
+    EXECUTOR_NUMBER=$(($RANDOM % $(((max_port_number - min_port_number) / server_port_range))))
+fi
+
+echo EXECUTOR_NUMBER=$EXECUTOR_NUMBER
+
 server_port_min=$((min_port_number + EXECUTOR_NUMBER * server_port_range))
 server_port_max=$((server_port_min + server_port_range))
 server_port=${server_port_min}
