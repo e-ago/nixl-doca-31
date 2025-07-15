@@ -895,6 +895,10 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
     if (num_workers_iter == custom_params->end() || !absl::SimpleAtoi(num_workers_iter->second, &numWorkers))
         numWorkers = 1;
 
+    if (numWorkers < init_params.numThreads) {
+        numWorkers = init_params.numThreads + 1;
+    }
+
     ucp_err_handling_mode_t err_handling_mode;
     const auto err_handling_mode_it =
         custom_params->find(std::string(nixl_ucx_err_handling_param_name));
