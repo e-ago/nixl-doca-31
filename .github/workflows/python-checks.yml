@@ -13,3 +13,4 @@ jobs:
       run: |
         ./.ci/scripts/check_prints.sh ./src
         ./.ci/scripts/check_prints.sh ./test
+        ./.ci/scripts/check_prints.sh ./benchmark

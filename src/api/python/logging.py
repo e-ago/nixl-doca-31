@@ -40,7 +40,6 @@ import logging
 import logging.config
 import os
 import socket
-from typing import Optional
 
 _logging_configured = False
 
