@@ -502,10 +502,20 @@ TEST_P(TestTransfer, ListenerCommSize) {
 }
 
 TEST_P(TestTransfer, threadpool) {
+    size_t count = 100;
+    std::vector<MemBuffer> src_buffers, dst_buffers;
+
+    createRegisteredMem(getAgent(0), 4096, count, DRAM_SEG, src_buffers);
+    createRegisteredMem(getAgent(1), 4096, count, DRAM_SEG, dst_buffers);
+
+    exchangeMD();
+    doTransfer(getAgent(0), getAgentName(0), getAgent(1), getAgentName(1),
+               4096, count, 1, 1, DRAM_SEG, src_buffers, DRAM_SEG, dst_buffers);
+
 }
 
 INSTANTIATE_TEST_SUITE_P(ucx, TestTransfer, testing::Values(std::make_tuple("UCX", 1, 1)));
 INSTANTIATE_TEST_SUITE_P(ucx_mo, TestTransfer, testing::Values(std::make_tuple("UCX_MO", 1, 1)));
-//INSTANTIATE_TEST_SUITE_P(ucx_threadpool, TestTransfer, testing::Values(std::make_tuple("UCX", 9, 8)));
+INSTANTIATE_TEST_SUITE_P(ucx_threadpool, TestTransfer, testing::Values(std::make_tuple("UCX", 9, 8)));
 
 } // namespace gtest

@@ -329,7 +329,7 @@ class nixlUcxThreadPoolEngine : public nixlUcxEngine {
         // send notifications
         size_t getWorkerId() const override {
             std::thread::id id = std::this_thread::get_id();
-            return std::hash<std::thread::id>{}(id) % m_numSharedWorkers;
+            return (std::hash<std::thread::id>{}(id) % m_numSharedWorkers) + m_numDedicatedWorkers;
         }
 };
 
