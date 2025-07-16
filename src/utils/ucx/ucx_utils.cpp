@@ -14,14 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ucx_utils.h"
 
-#include <exception>
-#include <vector>
-#include <string>
+#include <algorithm>
 #include <cstring>
+#include <exception>
 #include <stdexcept>
-#include <type_traits>
+#include <string>
+#include <vector>
 
 #include <nixl_types.h>
 
@@ -31,6 +32,15 @@
 #include "rkey.h"
 
 using namespace std;
+
+[[nodiscard]] nixl_b_params_t
+get_ucx_backend_common_options() {
+    nixl_b_params_t params = {{"ucx_devices", ""}, {"num_workers", "1"}};
+
+    params.emplace(nixl_ucx_err_handling_param_name,
+                   ucx_err_mode_to_string(UCP_ERR_HANDLING_MODE_PEER));
+    return params;
+}
 
 nixl_status_t ucx_status_to_nixl(ucs_status_t status)
 {
@@ -54,8 +64,46 @@ nixl_status_t ucx_status_to_nixl(ucs_status_t status)
     }
 }
 
-static void err_cb_wrapper(void *arg, ucp_ep_h ucp_ep, ucs_status_t status)
-{
+[[nodiscard]] std::string_view
+ucx_err_mode_to_string(ucp_err_handling_mode_t t) {
+    switch (t) {
+    case UCP_ERR_HANDLING_MODE_NONE:
+        return "none";
+    case UCP_ERR_HANDLING_MODE_PEER:
+        return "peer";
+    default:
+        throw std::invalid_argument(std::to_string(t));
+    }
+}
+
+[[nodiscard]] ucp_err_handling_mode_t
+ucx_err_mode_from_string(std::string_view s) {
+    constexpr std::array<ucp_err_handling_mode_t, 2> nixl_ucx_err_handling_modes = {
+        UCP_ERR_HANDLING_MODE_NONE,
+        UCP_ERR_HANDLING_MODE_PEER,
+    };
+
+    for (const auto mode : nixl_ucx_err_handling_modes) {
+        if (ucx_err_mode_to_string(mode) == s) {
+            return mode;
+        }
+    }
+
+    std::stringstream err_msg;
+    err_msg << "Invalid error handling mode: " << s << ". Valid values are: <";
+    for (size_t i = 0; i < nixl_ucx_err_handling_modes.size(); ++i) {
+        err_msg << ucx_err_mode_to_string(nixl_ucx_err_handling_modes[i]);
+        if (i < nixl_ucx_err_handling_modes.size() - 1) {
+            err_msg << "|";
+        }
+    }
+
+    err_msg << ">";
+    throw std::invalid_argument(err_msg.str());
+}
+
+static void
+err_cb_wrapper(void *arg, ucp_ep_h ucp_ep, ucs_status_t status) {
     nixlUcxEp *ep = reinterpret_cast<nixlUcxEp*>(arg);
     ep->err_cb(ucp_ep, status);
 }
@@ -435,11 +483,10 @@ nixlUcxWorker::createUcpWorker(const nixlUcxContext &ctx) {
     const nixlUcpWorkerParams params(ctx.mt_type);
     const ucs_status_t status = ucp_worker_create(ctx.ctx, &params, &worker);
     if(status != UCS_OK) {
-        const auto err_str = std::string("Failed to create UCX worker: ") +
-                             ucs_status_string(status);
-        NIXL_ERROR << err_str;
-        throw std::runtime_error(err_str);  // worker is nullptr -- no leak
+        throw std::runtime_error(std::string("Failed to create UCX worker: ") +
+                                 ucs_status_string(status));
     }
+
     return worker;
 }
 
@@ -454,9 +501,10 @@ std::string nixlUcxWorker::epAddr()
     wattr.field_mask = UCP_WORKER_ATTR_FIELD_ADDRESS;
     const ucs_status_t status = ucp_worker_query(worker.get(), &wattr);
     if (UCS_OK != status) {
-        NIXL_WARN << "Unable to query UCX endpoint address";
-        return {};
+        throw std::runtime_error(std::string("Unable to query UCX worker address: ") +
+                                 ucs_status_string(status));
     }
+
     const std::string result = nixlSerDes::_bytesToString(wattr.address, wattr.address_length);
     ucp_worker_release_address(worker.get(), wattr.address);
     return result;
