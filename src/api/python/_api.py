@@ -48,7 +48,7 @@ class nixl_agent_config:
         enable_listen_thread: bool = False,
         listen_port: int = 0,
         backends: list[str] = ["UCX"],
-        num_threads: int = 0,
+        num_threads: int = 8,
     ):
         # TODO: add backend init parameters
         self.backends = backends
@@ -56,6 +56,7 @@ class nixl_agent_config:
         self.enable_listen = enable_listen_thread
         self.port = listen_port
         self.num_threads = num_threads
+
 
 """
 @brief Main class for creating a NIXL agent and performing transfers.
