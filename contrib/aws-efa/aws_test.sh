@@ -81,7 +81,9 @@ TAGS_JSON=$(jq -n '{
 }')
 
 # Submit AWS job
-aws eks update-kubeconfig --name ucx-ci
+if [ -z "$SKIP_EKS" ]; then
+    aws eks update-kubeconfig --name ucx-ci
+fi
 JOB_NAME="NIXL_${GITHUB_RUN_NUMBER:-$RANDOM}"
 JOB_ID=$(aws batch submit-job \
     --job-name "$JOB_NAME" \
@@ -99,7 +101,7 @@ wait_for_status() {
     local interval="$3"
     local status=""
     SECONDS=0
-
+ 
     while [ $SECONDS -lt $timeout ]; do
         status=$(aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].status' --output text)
         if echo "$status" | grep -qE "$target_status"; then
@@ -125,9 +127,11 @@ if ! wait_for_status "RUNNING" 1800 10; then
 fi
 
 # Stream logs from the pod
+# if [ -z "$SKIP_EKS" ]; then
 POD=$(aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].eksProperties.podProperties.podName' --output text)
 echo "Streaming logs from pod: $POD"
 kubectl -n ucx-ci-batch-nodes logs -f "$POD" || kubectl -n ucx-ci-batch-nodes logs "$POD" --previous || true
+# fi
 
 # Check final job status
 echo "Waiting for job completion (timeout: 10m)..."

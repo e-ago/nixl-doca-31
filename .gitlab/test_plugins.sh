@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+set -x
+
 # Parse commandline arguments with first argument being the install directory.
 INSTALL_DIR=$1
 
@@ -21,6 +24,24 @@ if [ -z "$INSTALL_DIR" ]; then
     echo "Usage: $0 <install_dir>"
     exit 1
 fi
+
+ARCH=$(uname -m)
+[ "$ARCH" = "arm64" ] && ARCH="aarch64"
+
+export LD_LIBRARY_PATH=${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/$ARCH-linux-gnu:${INSTALL_DIR}/lib/$ARCH-linux-gnu/plugins:/usr/local/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:/usr/local/cuda-12.8/compat:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/compat/lib.real:$LD_LIBRARY_PATH
+
+export CPATH=${INSTALL_DIR}/include:$CPATH
+export PATH=${INSTALL_DIR}/bin:$PATH
+export PKG_CONFIG_PATH=${INSTALL_DIR}/lib/pkgconfig:$PKG_CONFIG_PATH
+export NIXL_PLUGIN_DIR=${INSTALL_DIR}/lib/$ARCH-linux-gnu/plugins
+
+echo "==== Show system info ===="
+env
+nvidia-smi topo -m || true
+ibv_devinfo || true
+uname -a || true
 
 echo "==== Running Plugins Gtest tests ===="
 cd ${INSTALL_DIR}
