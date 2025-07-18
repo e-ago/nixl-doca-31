@@ -142,6 +142,7 @@ class xferBenchConfig {
         static void printConfig();
         static void
         printOption (const std::string &desc, const std::string &value);
+        static void printSeparator(const char sep = '-');
         static std::vector<std::string> parseDeviceList();
         static bool
         isStorageBackend();

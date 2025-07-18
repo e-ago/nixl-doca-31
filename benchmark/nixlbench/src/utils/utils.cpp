@@ -283,10 +283,14 @@ xferBenchConfig::printOption (const std::string &desc, const std::string &value)
     std::cout << std::left << std::setw (60) << desc << ": " << value << std::endl;
 }
 
+void xferBenchConfig::printSeparator(const char sep) {
+    std::cout << std::string(170, sep) << std::endl;
+}
+
 void xferBenchConfig::printConfig() {
-    std::cout << std::string(70, '*') << std::endl;
+    printSeparator('*');
     std::cout << "NIXLBench Configuration" << std::endl;
-    std::cout << std::string(70, '*') << std::endl;
+    printSeparator('*');
     printOption ("Runtime (--runtime_type=[etcd])", runtime_type);
     if (runtime_type == XFERBENCH_RT_ETCD) {
         printOption ("ETCD Endpoint ", etcd_endpoints);
@@ -340,7 +344,7 @@ void xferBenchConfig::printConfig() {
     printOption ("Num iter (--num_iter=N)", std::to_string (num_iter));
     printOption ("Warmup iter (--warmup_iter=N)", std::to_string (warmup_iter));
     printOption ("Num threads (--num_threads=N)", std::to_string (num_threads));
-    std::cout << std::string(80, '-') << std::endl;
+    printSeparator('-');
     std::cout << std::endl;
 }
 
@@ -496,6 +500,11 @@ void xferBenchUtils::printStatsHeader() {
                   << std::setw(15) << "B/W (GB/Sec)"
                   << std::setw(25) << "Aggregate B/W (GB/Sec)"
                   << std::setw(20) << "Network Util (%)"
+                  << std::setw(15) << "Prep avg (us)"
+                  << std::setw(15) << "Post avg (us)"
+                  << std::setw(15) << "Post max (us)"
+                  << std::setw(15) << "Tx avg (us)"
+                  << std::setw(15) << "Tx max (us)"
                   << std::endl;
     } else {
         std::cout << std::left << std::setw(20) << "Block Size (B)"
@@ -504,9 +513,14 @@ void xferBenchUtils::printStatsHeader() {
                   << std::setw(15) << "B/W (MiB/Sec)"
                   << std::setw(15) << "B/W (GiB/Sec)"
                   << std::setw(15) << "B/W (GB/Sec)"
+                  << std::setw(15) << "Prepare (us)"
+                  << std::setw(15) << "Post avg (us)"
+                  << std::setw(15) << "Post max (us)"
+                  << std::setw(15) << "Tx avg (us)"
+                  << std::setw(15) << "Tx max (us)"
                   << std::endl;
     }
-    std::cout << std::string(80, '-') << std::endl;
+    xferBenchConfig::printSeparator('-');
 }
 
 void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_size, xferBenchStats stats) {
@@ -552,6 +566,12 @@ void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_
         return;
     }
 
+    double prepare_duration = stats.prepare_duration.avg();
+    double post_duration = stats.post_duration.avg();
+    double transfer_duration = stats.transfer_duration.avg();
+    double post_max_duration = stats.post_duration.max();
+    double transfer_max_duration = stats.transfer_duration.max();
+
     // Tabulate print with fixed width for each string
     if (IS_PAIRWISE_AND_SG() && rt->getSize() > 2) {
         std::cout << std::left << std::setw(20) << block_size
@@ -562,6 +582,11 @@ void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_
                   << std::setw(15) << throughput_gb
                   << std::setw(25) << totalbw
                   << std::setw(20) << (totalbw / (rt->getSize()/2 * MAXBW))*100
+                  << std::setw(15) << prepare_duration
+                  << std::setw(15) << post_duration
+                  << std::setw(15) << post_max_duration
+                  << std::setw(15) << transfer_duration
+                  << std::setw(15) << transfer_max_duration
                   << std::endl;
     } else {
         std::cout << std::left << std::setw(20) << block_size
@@ -570,6 +595,11 @@ void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_
                   << std::setw(15) << throughput
                   << std::setw(15) << throughput_gib
                   << std::setw(15) << throughput_gb
+                  << std::setw(15) << prepare_duration
+                  << std::setw(15) << post_duration
+                  << std::setw(15) << post_max_duration
+                  << std::setw(15) << transfer_duration
+                  << std::setw(15) << transfer_max_duration
                   << std::endl;
     }
 }
