@@ -110,6 +110,7 @@ class nixlAgentData {
         ~nixlAgentData();
 
     friend class nixlAgent;
+    friend class nixlXferReqH;
 };
 
 class nixlBackendEngine;
