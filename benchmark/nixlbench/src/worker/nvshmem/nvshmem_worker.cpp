@@ -125,13 +125,16 @@ std::vector<std::vector<xferBenchIOV>> xferBenchNvshmemWorker::exchangeIOV(const
 // No thread support for NVSHMEM yet
 static int execTransfer(const std::vector<std::vector<xferBenchIOV>> &local_iovs,
                         const std::vector<std::vector<xferBenchIOV>> &remote_iovs,
-                        const int num_iter, cudaStream_t stream) {
+                        const int num_iter, cudaStream_t stream, xferBenchStats &stats) {
     int ret = 0, tid = 0, target_rank;
 
     target_rank = 1;
 
     const auto &local_iov = local_iovs[tid];
     const auto &remote_iov = remote_iovs[tid];
+
+    xferBenchTimer total_timer;
+    xferBenchTimer timer;
 
     for (int i = 0; i < num_iter; i++) {
         for (size_t i = 0; i < local_iov.size(); i++) {
@@ -144,19 +147,24 @@ static int execTransfer(const std::vector<std::vector<xferBenchIOV>> &local_iovs
             }
         }
         nvshmemx_quiet_on_stream(stream);
+        long long transfer_duration = timer.lap();
+        stats.transfer_duration.add(transfer_duration);
     }
+
+    long long total_duration = total_timer.lap();
+    stats.total_duration.add(total_duration);
 
     return ret;
 }
 
-std::variant<double, int> xferBenchNvshmemWorker::transfer(size_t block_size,
+std::variant<xferBenchStats, int> xferBenchNvshmemWorker::transfer(size_t block_size,
                                                   const std::vector<std::vector<xferBenchIOV>> &local_trans_lists,
                                                   const std::vector<std::vector<xferBenchIOV>> &remote_trans_lists) {
     cudaEvent_t start_event, stop_event;
-    float total_duration = 0.0;
     int num_iter = xferBenchConfig::num_iter / xferBenchConfig::num_threads;
     int skip = xferBenchConfig::warmup_iter / xferBenchConfig::num_threads;
     int ret = 0;
+    xferBenchStats stats;
 
     // Create events to time the transfer
     CHECK_CUDA_ERROR(cudaEventCreate(&start_event), "Failed to create CUDA event");
@@ -169,16 +177,17 @@ std::variant<double, int> xferBenchNvshmemWorker::transfer(size_t block_size,
         num_iter /= LARGE_BLOCK_SIZE_ITER_FACTOR;
     }
 
-    ret = execTransfer(local_trans_lists, remote_trans_lists, skip, stream);
+    ret = execTransfer(local_trans_lists, remote_trans_lists, skip, stream, stats);
     if (ret < 0) {
         return std::variant<double, int>(ret);
     }
+    stats.reset();
     nvshmemx_barrier_all_on_stream(stream);
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream), "Failed to synchronize CUDA stream");
 
     CHECK_CUDA_ERROR(cudaEventRecord(start_event, stream), "Failed to record CUDA event");
 
-    ret = execTransfer(local_trans_lists, remote_trans_lists, num_iter, stream);
+    ret = execTransfer(local_trans_lists, remote_trans_lists, num_iter, stream, stats);
 
     CHECK_CUDA_ERROR(cudaEventRecord(stop_event, stream), "Failed to record CUDA event");
 
@@ -186,10 +195,7 @@ std::variant<double, int> xferBenchNvshmemWorker::transfer(size_t block_size,
     CHECK_CUDA_ERROR(cudaEventSynchronize(stop_event), "Failed to synchronize CUDA event");
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream), "Failed to synchronize CUDA stream");
 
-    // Time in ms
-    CHECK_CUDA_ERROR(cudaEventElapsedTime(&total_duration, start_event, stop_event), "Failed to get elapsed time");
-
-    return ret < 0 ? std::variant<double, int>(ret) : std::variant<double, int>((double)total_duration * 1e+3);
+    return ret < 0 ? std::variant<xferBenchStats, int>(ret) : std::variant<xferBenchStats, int>(stats);
 }
 
 void xferBenchNvshmemWorker::poll(size_t block_size) {

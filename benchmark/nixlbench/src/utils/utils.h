@@ -19,6 +19,7 @@
 #define __UTILS_H
 
 #include "config.h"
+#include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -146,6 +147,48 @@ class xferBenchConfig {
         isStorageBackend();
 };
 
+// Timer class for measuring durations at high resolution
+class xferBenchTimer {
+public:
+    xferBenchTimer();
+
+    // Return the elapsed time in microseconds
+    long long lap();
+
+private:
+    std::chrono::high_resolution_clock::time_point start_;
+};
+
+// Stats class for measuring arbitrary numeric metrics with multiple samples
+class xferMetricStats {
+public:
+    double min() const;
+    double max() const;
+    double avg() const;
+    double p90() const;
+    double p95() const;
+    double p99() const;
+
+    void add(double value);
+    void add(const xferMetricStats& other);
+    void reset();
+
+private:
+    std::vector<double> samples;
+};
+
+// Stats class for measuring benchmark metrics
+class xferBenchStats {
+public:
+    xferMetricStats total_duration;
+    xferMetricStats prepare_duration;
+    xferMetricStats post_duration;
+    xferMetricStats transfer_duration;
+
+    void reset();
+    void add(const xferBenchStats& other);
+};
+
 // Generic IOV descriptor class independent of NIXL
 class xferBenchIOV {
 public:
@@ -174,7 +217,7 @@ class xferBenchUtils {
         static void checkConsistency(std::vector<std::vector<xferBenchIOV>> &desc_lists);
         static void printStatsHeader();
         static void printStats(bool is_target, size_t block_size, size_t batch_size,
-			                   double total_duration);
+			                   xferBenchStats stats);
 };
 
 #endif // __UTILS_H

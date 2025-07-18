@@ -55,7 +55,7 @@ class xferBenchWorker {
 	virtual int synchronizeStart() = 0;
 
         // Data operations
-        virtual std::variant<double, int> transfer(size_t block_size,
+        virtual std::variant<xferBenchStats, int> transfer(size_t block_size,
                                                    const std::vector<std::vector<xferBenchIOV>> &local_iov_lists,
                                                    const std::vector<std::vector<xferBenchIOV>> &remote_iov_lists) = 0;
 };

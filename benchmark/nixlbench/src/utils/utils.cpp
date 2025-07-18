@@ -15,8 +15,11 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <gflags/gflags.h>
+#include <numeric>
 #include <sstream>
 #include <sys/time.h>
 #include <unistd.h>
@@ -506,7 +509,7 @@ void xferBenchUtils::printStatsHeader() {
     std::cout << std::string(80, '-') << std::endl;
 }
 
-void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_size, double total_duration) {
+void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_size, xferBenchStats stats) {
     size_t total_data_transferred = 0;
     double avg_latency = 0, throughput = 0, throughput_gib = 0, throughput_gb = 0;
     double totalbw = 0;
@@ -523,6 +526,8 @@ void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_
         rt->reduceSumDouble(&throughput_gb, &totalbw, 0);
         return;
     }
+
+    double total_duration = stats.total_duration.avg();
 
     total_data_transferred = ((block_size * batch_size) * num_iter); // In Bytes
     avg_latency = (total_duration / (num_iter * batch_size)); // In microsec
@@ -567,4 +572,85 @@ void xferBenchUtils::printStats(bool is_target, size_t block_size, size_t batch_
                   << std::setw(15) << throughput_gb
                   << std::endl;
     }
+}
+
+/*
+ * xferMetricStats
+ */
+
+double xferMetricStats::min() const {
+    if (samples.empty()) return 0;
+    return *std::min_element(samples.begin(), samples.end());
+}
+
+double xferMetricStats::max() const {
+    if (samples.empty()) return 0;
+    return *std::max_element(samples.begin(), samples.end());
+}
+
+double xferMetricStats::avg() const {
+    if (samples.empty()) return 0;
+    return std::accumulate(samples.begin(), samples.end(), 0.0) / samples.size();
+}
+
+double xferMetricStats::p90() const {
+    if (samples.empty()) return 0;
+    size_t index = samples.size() * 0.9;
+    return samples[std::min(index, samples.size() - 1)];
+}
+
+double xferMetricStats::p95() const {
+    if (samples.empty()) return 0;
+    size_t index = samples.size() * 0.95;
+    return samples[std::min(index, samples.size() - 1)];
+}
+
+double xferMetricStats::p99() const {
+    if (samples.empty()) return 0;
+    size_t index = samples.size() * 0.99;
+    return samples[std::min(index, samples.size() - 1)];
+}
+
+void xferMetricStats::add(double value) {
+    samples.push_back(value);
+}
+
+void xferMetricStats::add(const xferMetricStats& other) {
+    samples.insert(samples.end(), other.samples.begin(), other.samples.end());
+}
+
+void xferMetricStats::reset() {
+    samples.clear();
+}
+
+/*
+ * xferBenchStats
+ */
+
+void xferBenchStats::reset() {
+    total_duration.reset();
+    prepare_duration.reset();
+    post_duration.reset();
+    transfer_duration.reset();
+}
+
+void xferBenchStats::add(const xferBenchStats& other) {
+    total_duration.add(other.total_duration);
+    prepare_duration.add(other.prepare_duration);
+    post_duration.add(other.post_duration);
+    transfer_duration.add(other.transfer_duration);
+}
+
+/*
+ * xferBenchTimer
+ */
+
+xferBenchTimer::xferBenchTimer()
+    : start_(std::chrono::high_resolution_clock::now()) {}
+
+long long xferBenchTimer::lap() {
+    auto now = std::chrono::high_resolution_clock::now();
+    auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(now - start_).count();
+    start_ = now;
+    return duration_us;
 }
