@@ -126,7 +126,7 @@ testString() {
     {
         nixl::serializer ser1;
         const std::string out = ser1.getBuffer();
-        const std::string moved = std::move(ser).getBuffer();
+        const std::string moved = std::move(ser1).getBuffer();
         assert(out == moved);
         assert(out == "N1XL");
         nixlSerDes ser2;
