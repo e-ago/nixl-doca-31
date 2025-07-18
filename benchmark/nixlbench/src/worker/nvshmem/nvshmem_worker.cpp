@@ -123,9 +123,12 @@ std::vector<std::vector<xferBenchIOV>> xferBenchNvshmemWorker::exchangeIOV(const
 }
 
 // No thread support for NVSHMEM yet
-static int execTransfer(const std::vector<std::vector<xferBenchIOV>> &local_iovs,
-                        const std::vector<std::vector<xferBenchIOV>> &remote_iovs,
-                        const int num_iter, cudaStream_t stream, xferBenchStats &stats) {
+static int
+execTransfer(const std::vector<std::vector<xferBenchIOV>> &local_iovs,
+             const std::vector<std::vector<xferBenchIOV>> &remote_iovs,
+             const int num_iter,
+             cudaStream_t stream,
+             xferBenchStats &stats) {
     int ret = 0, tid = 0, target_rank;
 
     target_rank = 1;
@@ -157,9 +160,10 @@ static int execTransfer(const std::vector<std::vector<xferBenchIOV>> &local_iovs
     return ret;
 }
 
-std::variant<xferBenchStats, int> xferBenchNvshmemWorker::transfer(size_t block_size,
-                                                  const std::vector<std::vector<xferBenchIOV>> &local_trans_lists,
-                                                  const std::vector<std::vector<xferBenchIOV>> &remote_trans_lists) {
+std::variant<xferBenchStats, int>
+xferBenchNvshmemWorker::transfer(size_t block_size,
+                                 const std::vector<std::vector<xferBenchIOV>> &local_trans_lists,
+                                 const std::vector<std::vector<xferBenchIOV>> &remote_trans_lists) {
     cudaEvent_t start_event, stop_event;
     int num_iter = xferBenchConfig::num_iter / xferBenchConfig::num_threads;
     int skip = xferBenchConfig::warmup_iter / xferBenchConfig::num_threads;
@@ -195,10 +199,12 @@ std::variant<xferBenchStats, int> xferBenchNvshmemWorker::transfer(size_t block_
     CHECK_CUDA_ERROR(cudaEventSynchronize(stop_event), "Failed to synchronize CUDA event");
     CHECK_CUDA_ERROR(cudaStreamSynchronize(stream), "Failed to synchronize CUDA stream");
 
-    return ret < 0 ? std::variant<xferBenchStats, int>(ret) : std::variant<xferBenchStats, int>(stats);
+    return ret < 0 ? std::variant<xferBenchStats, int>(ret) :
+                     std::variant<xferBenchStats, int>(stats);
 }
 
-void xferBenchNvshmemWorker::poll(size_t block_size) {
+void
+xferBenchNvshmemWorker::poll(size_t block_size) {
     // For NVSHMEM, we don't need to poll
     // The transfer is already complete when we reach this point
     nvshmemx_barrier_all_on_stream(stream);

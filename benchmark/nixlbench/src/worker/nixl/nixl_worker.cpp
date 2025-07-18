@@ -831,7 +831,8 @@ xferBenchNixlWorker::transfer(size_t block_size,
         num_iter /= LARGE_BLOCK_SIZE_ITER_FACTOR;
     }
 
-    ret = execTransfer(agent, local_iovs, remote_iovs, xfer_op, skip, xferBenchConfig::num_threads, stats);
+    ret = execTransfer(
+        agent, local_iovs, remote_iovs, xfer_op, skip, xferBenchConfig::num_threads, stats);
     if (ret < 0) {
         return std::variant<xferBenchStats, int>(ret);
     }

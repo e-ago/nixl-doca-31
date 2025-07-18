@@ -139,11 +139,14 @@ class xferBenchConfig {
         static long page_size;
 
         static int loadFromFlags();
-        static void printConfig();
         static void
-        printOption (const std::string &desc, const std::string &value);
-        static void printSeparator(const char sep = '-');
-        static std::vector<std::string> parseDeviceList();
+        printConfig();
+        static void
+        printOption(const std::string &desc, const std::string &value);
+        static void
+        printSeparator(const char sep = '-');
+        static std::vector<std::string>
+        parseDeviceList();
         static bool
         isStorageBackend();
 };
@@ -154,7 +157,8 @@ public:
     xferBenchTimer();
 
     // Return the elapsed time in microseconds
-    long long lap();
+    long long
+    lap();
 
 private:
     std::chrono::high_resolution_clock::time_point start_;
@@ -163,16 +167,25 @@ private:
 // Stats class for measuring arbitrary numeric metrics with multiple samples
 class xferMetricStats {
 public:
-    double min() const;
-    double max() const;
-    double avg() const;
-    double p90() const;
-    double p95() const;
-    double p99() const;
+    double
+    min() const;
+    double
+    max() const;
+    double
+    avg() const;
+    double
+    p90() const;
+    double
+    p95() const;
+    double
+    p99() const;
 
-    void add(double value);
-    void add(const xferMetricStats& other);
-    void reset();
+    void
+    add(double value);
+    void
+    add(const xferMetricStats &other);
+    void
+    reset();
 
 private:
     std::vector<double> samples;
@@ -186,8 +199,10 @@ public:
     xferMetricStats post_duration;
     xferMetricStats transfer_duration;
 
-    void reset();
-    void add(const xferBenchStats& other);
+    void
+    reset();
+    void
+    add(const xferBenchStats &other);
 };
 
 // Generic IOV descriptor class independent of NIXL
@@ -215,10 +230,12 @@ class xferBenchUtils {
         static void setDevToUse(std::string dev);
         static std::string getDevToUse();
 
-        static void checkConsistency(std::vector<std::vector<xferBenchIOV>> &desc_lists);
-        static void printStatsHeader();
-        static void printStats(bool is_target, size_t block_size, size_t batch_size,
-			                   xferBenchStats stats);
+        static void
+        checkConsistency(std::vector<std::vector<xferBenchIOV>> &desc_lists);
+        static void
+        printStatsHeader();
+        static void
+        printStats(bool is_target, size_t block_size, size_t batch_size, xferBenchStats stats);
 };
 
 #endif // __UTILS_H
