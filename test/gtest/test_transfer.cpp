@@ -97,10 +97,9 @@ class TestTransfer : public testing::TestWithParam<std::tuple<std::string, size_
 protected:
     static nixlAgentConfig getConfig(int listen_port)
     {
-        size_t num_threads = getNumThreads();
-        return nixlAgentConfig(num_threads == 1, listen_port > 0, listen_port,
+        return nixlAgentConfig(true, listen_port > 0, listen_port,
                                nixl_thread_sync_t::NIXL_THREAD_SYNC_RW,
-                               num_threads, 0, 100000);
+                               getNumThreads(), 0, 100000);
     }
 
     static int getPort(int i)

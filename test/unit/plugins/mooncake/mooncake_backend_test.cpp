@@ -112,7 +112,8 @@ nixlBackendEngine *createEngine(std::string name, bool p_thread)
     nixlBackendInitParams init;
     nixl_b_params_t       custom_params;
 
-    init.numThreads   = p_thread ? 1 : 0;
+    init.enableProgTh = p_thread;
+    init.numThreads   = 0;
     init.pthrDelay    = 100;
     init.localAgent   = name;
     init.customParams = &custom_params;

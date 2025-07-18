@@ -877,16 +877,12 @@ std::unique_ptr<nixlUcxEngine>
 nixlUcxEngine::create(const nixlBackendInitParams &init_params)
 {
     nixlUcxEngine *engine;
-    switch (init_params.numThreads) {
-        case 0:
-            engine = new nixlUcxEngine(init_params);
-            break;
-        case 1:
-            engine = new nixlUcxThreadEngine(init_params);
-            break;
-        default:
-            engine = new nixlUcxThreadPoolEngine(init_params);
-            break;
+    if (init_params.numThreads > 0) {
+        engine = new nixlUcxThreadPoolEngine(init_params);
+    } else if (init_params.enableProgTh) {
+        engine = new nixlUcxThreadEngine(init_params);
+    } else {
+        engine = new nixlUcxEngine(init_params);
     }
     return std::unique_ptr<nixlUcxEngine>(engine);
 }

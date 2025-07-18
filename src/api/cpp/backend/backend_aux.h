@@ -49,6 +49,7 @@ class nixlBackendInitParams {
         nixl_backend_t    type;
         nixl_b_params_t*  customParams;
 
+        bool              enableProgTh;
         size_t            numThreads;
         nixlTime::us_t    pthrDelay;
         nixl_thread_sync_t syncMode;
