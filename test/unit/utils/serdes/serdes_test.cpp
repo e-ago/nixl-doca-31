@@ -71,51 +71,51 @@ void
 testLongLength() {
     // Test long length for 0.
     {
-        testSerializer ser;
-        ser.addLongLength(0);
-        const std::string out = ser.getBuffer();
+        testSerializer ser1;
+        ser1.addLongLength(0);
+        const std::string out = ser1.getBuffer();
         assert(out == std::string("N1XL\0", 5));
     }
     // Test long length for one byte.
     {
-        testSerializer ser;
-        ser.addLongLength(1);
-        const std::string out = ser.getBuffer();
+        testSerializer ser1;
+        ser1.addLongLength(1);
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\xff\x01");
     }
     // Test long length for one byte.
     {
-        testSerializer ser;
-        ser.addLongLength(255);
-        const std::string out = ser.getBuffer();
+        testSerializer ser1;
+        ser1.addLongLength(255);
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\xff\xff");
     }
     // Test long length for two bytes.
     {
-        testSerializer ser;
-        ser.addLongLength(258);
-        const std::string out = ser.getBuffer();
+        testSerializer ser1;
+        ser1.addLongLength(258);
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\xfe\x02\x01");
     }
     // Test long length for two bytes.
     {
-        testSerializer ser;
-        ser.addLongLength(65535);
-        const std::string out = ser.getBuffer();
+        testSerializer ser1;
+        ser1.addLongLength(65535);
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\xfe\xff\xff");
     }
     // Test long length for three bytes.
     {
-        testSerializer ser;
-        ser.addLongLength(16777215);
-        const std::string out = ser.getBuffer();
+        testSerializer ser1;
+        ser1.addLongLength(16777215);
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\xfd\xff\xff\xff");
     }
     // Test long length for eight bytes.
     {
-        testSerializer ser;
-        ser.addLongLength(size_t(-2));
-        const std::string out = ser.getBuffer();
+        testSerializer ser1;
+        ser1.addLongLength(size_t(-2));
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\xf8\xfe\xff\xff\xff\xff\xff\xff\xff");
     }
 }
@@ -124,8 +124,8 @@ void
 testString() {
     // Test empty serialization.
     {
-        nixl::serializer ser;
-        const std::string out = ser.getBuffer();
+        nixl::serializer ser1;
+        const std::string out = ser1.getBuffer();
         const std::string moved = std::move(ser).getBuffer();
         assert(out == moved);
         assert(out == "N1XL");
@@ -141,9 +141,9 @@ testString() {
     }
     // Test empty tag and string value.
     {
-        nixl::serializer ser;
-        ser.addString("", "");
-        const std::string out = ser.getBuffer();
+        nixl::serializer ser1;
+        ser1.addString("", "");
+        const std::string out = ser1.getBuffer();
         assert(out == std::string("N1XL\x00\x00", 6));
         nixlSerDes ser2;
         ser2.addStr("", "");
@@ -162,9 +162,9 @@ testString() {
     }
     // Test short tag and short string value.
     {
-        nixl::serializer ser;
-        ser.addString("x", "yz");
-        const std::string out = ser.getBuffer();
+        nixl::serializer ser1;
+        ser1.addString("x", "yz");
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\x01x\x02yz");
         nixlSerDes ser2;
         ser2.addStr("x", "yz");
@@ -183,13 +183,13 @@ testString() {
     }
     // Test long tag and short string value.
     {
-        nixl::serializer ser;
+        nixl::serializer ser1;
         const std::string tmp = "abcdefghijklmnopqrstuvwxyz";
         const std::string str = tmp + tmp + tmp + tmp + tmp + tmp;
         assert(str.size() > 127);
         assert(str.size() < 256);
-        ser.addString(str, "xyz");
-        const std::string out = ser.getBuffer();
+        ser1.addString(str, "xyz");
+        const std::string out = ser1.getBuffer();
         const std::string ref = std::string("N1XL\xff") + char(str.size() & 0xff) + str + "\x03xyz";
         assert(out == ref);
         nixlSerDes ser2;
@@ -209,13 +209,13 @@ testString() {
     }
     // Test short tag and long string value.
     {
-        nixl::serializer ser;
+        nixl::serializer ser1;
         const std::string tmp = "abcdefghijklmnopqrstuvwxyz";
         const std::string str = tmp + tmp + tmp + tmp + tmp + tmp;
         assert(str.size() > 127);
         assert(str.size() < 256);
-        ser.addString("xyz", str);
-        const std::string out = ser.getBuffer();
+        ser1.addString("xyz", str);
+        const std::string out = ser1.getBuffer();
         const std::string ref = std::string("N1XL") + "\x03xyz\xff" + char(str.size() & 0xff) + str;
         assert(out == ref);
         nixlSerDes ser2;
@@ -235,13 +235,13 @@ testString() {
     }
     // Test long tag and long string value.
     {
-        nixl::serializer ser;
+        nixl::serializer ser1;
         const std::string tmp = "abcdefghijklmnopqrstuvwxyz";
         const std::string str = tmp + tmp + tmp + tmp + tmp + tmp;
         assert(str.size() > 127);
         assert(str.size() < 256);
-        ser.addString(str, str);
-        const std::string out = ser.getBuffer();
+        ser1.addString(str, str);
+        const std::string out = ser1.getBuffer();
         const std::string ref = std::string("N1XL") + "\xff" + char(str.size() & 0xff) + str +
             "\xff" + char(str.size() & 0xff) + str;
         assert(out == ref);
@@ -267,9 +267,9 @@ void
 testIntegral(const T val, const std::string &ref) {
     // Test new serializer class.
     {
-        nixl::serializer ser;
-        ser.addIntegral("Mn", val);
-        const std::string out = ser.getBuffer();
+        nixl::serializer ser1;
+        ser1.addIntegral("Mn", val);
+        const std::string out = ser1.getBuffer();
         assert(out == "N1XL\x02Mn" + ref);
         nixl::deserializer des(out.data(), out.size());
         T get = T(-42);
@@ -281,9 +281,9 @@ testIntegral(const T val, const std::string &ref) {
     }
     // Test compatibility class.
     {
-        nixlSerDes ser;
-        ser.addBuf("Hi", &val, sizeof(val));
-        const std::string out = ser.exportStr();
+        nixlSerDes ser1;
+        ser1.addBuf("Hi", &val, sizeof(val));
+        const std::string out = ser1.exportStr();
         assert(out == "N1XL\x02Hi" + ref);
         {
             nixlSerDes des;
@@ -345,13 +345,13 @@ testIntegral() {
 
 void
 testSequence() {
-    nixl::serializer ser;
-    ser.addString("a", "111");
-    ser.addString("b", "222");
-    ser.addString("f", "333");
-    ser.addString("f", "444");
-    ser.addString("h", "555");
-    const std::string out = ser.getBuffer();
+    nixl::serializer ser1;
+    ser1.addString("a", "111");
+    ser1.addString("b", "222");
+    ser1.addString("f", "333");
+    ser1.addString("f", "444");
+    ser1.addString("h", "555");
+    const std::string out = ser1.getBuffer();
     {
         nixl::deserializer des(out.data(), out.size());
         assert(!des.empty());
