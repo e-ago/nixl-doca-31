@@ -75,7 +75,7 @@ if __name__ == "__main__":
         try:
             params, mems = agent.getPluginParams('POSIX')
             backend = agent.createBackend('POSIX', params)
-            print(f"Created backend: POSIX")
+            print("Created backend: POSIX")
 
             # Query with specific backend
             resp = agent.queryMem(descs, [backend])
@@ -85,7 +85,7 @@ if __name__ == "__main__":
             try:
                 params, mems = agent.getPluginParams('MOCK_DRAM')
                 backend = agent.createBackend('MOCK_DRAM', params)
-                print(f"Created backend: MOCK_DRAM")
+                print("Created backend: MOCK_DRAM")
 
                 # Query with specific backend
                 resp = agent.queryMem(descs, [backend])
