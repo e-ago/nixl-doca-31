@@ -71,7 +71,7 @@ class nixlAgentConfig {
                          const uint64_t pthr_delay_us=0,
                          const uint64_t lthr_delay_us = 100000) :
                          /* TODO: remove use_prog_thread */
-                         numThreads(use_prog_thread ? 1 : num_threads),
+                         numThreads(std::max((size_t)use_prog_thread, num_threads)),
                          useListenThread(use_listen_thread),
                          listenPort(port),
                          syncMode(sync_mode),

@@ -668,7 +668,7 @@ class nixlUcxThreadContext {
         nixlUcxThreadContext(asio::io_context &io, nixlUcxWorker &worker,
                              size_t workerId) :
             m_io(io), m_worker(worker), m_workerId(workerId),
-            m_ev(new asio::posix::stream_descriptor(m_io, m_worker.getEfd())) {}
+            m_ev(m_io, m_worker.getEfd()) {}
 
     void operator()() {
         nixlUcxThreadContext::tlsCtx = this;
@@ -685,7 +685,7 @@ class nixlUcxThreadContext {
             } while (status == NIXL_IN_PROG);
 
             uint64_t buf;
-            m_ev->async_read_some(asio::buffer(&buf, sizeof(buf)),
+            m_ev.async_read_some(asio::buffer(&buf, sizeof(buf)),
                 [&, self](const asio::error_code& ec, size_t bytes_read) {
                     if (!ec) {
                         self(self);
@@ -741,8 +741,7 @@ class nixlUcxThreadContext {
         asio::io_context &m_io;
         nixlUcxWorker &m_worker;
         size_t m_workerId;
-        // TODO: close it after dtor
-        asio::posix::stream_descriptor *m_ev;
+        asio::posix::stream_descriptor m_ev;
         // TODO: make it intrusive
         std::list<nixlUcxBackendH *> m_requests;
 
@@ -776,6 +775,13 @@ nixlUcxThreadPoolEngine::~nixlUcxThreadPoolEngine() {
     for (auto &thread : m_threads) {
         thread.join();
     }
+
+    /* Explicitly clear UCX resources because this class injects event descriptor
+     * into the UCX worker and this descriptor must be valid when worker is
+     * destroyed. */
+    remoteConnMap.clear();
+    uws.clear();
+    uc.reset();
 }
 
 nixl_status_t
