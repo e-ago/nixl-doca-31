@@ -138,7 +138,8 @@ class xferBenchConfig {
         static std::string gpunetio_device_list;
         static long page_size;
 
-        static int loadFromFlags();
+        static int
+        loadFromFlags();
         static void
         printConfig();
         static void
@@ -214,11 +215,19 @@ public:
     size_t padded_size;
     unsigned long long handle;
 
-    xferBenchIOV(uintptr_t a, size_t l, int d) :
-        addr(a), len(l), devId(d), padded_size(len), handle(0) {}
+    xferBenchIOV(uintptr_t a, size_t l, int d)
+        : addr(a),
+          len(l),
+          devId(d),
+          padded_size(len),
+          handle(0) {}
 
-    xferBenchIOV(uintptr_t a, size_t l, int d, size_t p, unsigned long long h) :
-        addr(a), len(l), devId(d), padded_size(p), handle(h) {}
+    xferBenchIOV(uintptr_t a, size_t l, int d, size_t p, unsigned long long h)
+        : addr(a),
+          len(l),
+          devId(d),
+          padded_size(p),
+          handle(h) {}
 };
 
 class xferBenchUtils {
@@ -227,8 +236,10 @@ class xferBenchUtils {
         static std::string dev_to_use;
     public:
         static void setRT(xferBenchRT *rt);
-        static void setDevToUse(std::string dev);
-        static std::string getDevToUse();
+        static void
+        setDevToUse(std::string dev);
+        static std::string
+        getDevToUse();
 
         static void
         checkConsistency(std::vector<std::vector<xferBenchIOV>> &desc_lists);

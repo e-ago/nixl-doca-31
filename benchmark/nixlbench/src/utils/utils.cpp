@@ -279,7 +279,7 @@ xferBenchConfig::loadFromFlags() {
 }
 
 void
-xferBenchConfig::printOption (const std::string &desc, const std::string &value) {
+xferBenchConfig::printOption(const std::string &desc, const std::string &value) {
     std::cout << std::left << std::setw(60) << desc << ": " << value << std::endl;
 }
 
@@ -297,7 +297,7 @@ xferBenchConfig::printConfig() {
     if (runtime_type == XFERBENCH_RT_ETCD) {
         printOption("ETCD Endpoint ", etcd_endpoints);
     }
-    printOption ("Worker type (--worker_type=[nixl,nvshmem])", worker_type);
+    printOption("Worker type (--worker_type=[nixl,nvshmem])", worker_type);
     if (worker_type == XFERBENCH_WORKER_NIXL) {
         printOption ("Backend (--backend=[UCX,UCX_MO,GDS,POSIX])", backend);
         printOption ("Enable pt (--enable_pt=[0,1])", std::to_string (enable_pt));
@@ -340,9 +340,9 @@ xferBenchConfig::printConfig() {
     printOption ("Num initiator dev (--num_initiator_dev=N)", std::to_string (num_initiator_dev));
     printOption ("Num target dev (--num_target_dev=N)", std::to_string (num_target_dev));
     printOption ("Start block size (--start_block_size=N)", std::to_string (start_block_size));
-    printOption ("Max block size (--max_block_size=N)", std::to_string (max_block_size));
-    printOption ("Start batch size (--start_batch_size=N)", std::to_string (start_batch_size));
-    printOption ("Max batch size (--max_batch_size=N)", std::to_string (max_batch_size));
+    printOption("Max block size (--max_block_size=N)", std::to_string(max_block_size));
+    printOption("Start batch size (--start_batch_size=N)", std::to_string(start_batch_size));
+    printOption("Max batch size (--max_batch_size=N)", std::to_string(max_batch_size));
     printOption("Num iter (--num_iter=N)", std::to_string(num_iter));
     printOption("Warmup iter (--warmup_iter=N)", std::to_string(warmup_iter));
     printOption("Num threads (--num_threads=N)", std::to_string(num_threads));
@@ -492,7 +492,8 @@ void xferBenchUtils::checkConsistency(std::vector<std::vector<xferBenchIOV>> &io
     }
 }
 
-void xferBenchUtils::printStatsHeader() {
+void
+xferBenchUtils::printStatsHeader() {
     if (IS_PAIRWISE_AND_SG() && rt->getSize() > 2) {
         std::cout << std::left << std::setw(20) << "Block Size (B)" << std::setw(15) << "Batch Size"
                   << std::setw(15) << "Avg Lat. (us)" << std::setw(15) << "B/W (MiB/Sec)"
@@ -528,7 +529,8 @@ xferBenchUtils::printStats(bool is_target,
     }
 
     // TODO: We can avoid this by creating a sub-communicator across initiator ranks
-    // if (isTarget() && IS_PAIRWISE_AND_SG() && rt->getSize() > 2) { - Fix this isTarget can not be called here
+    // if (isTarget() && IS_PAIRWISE_AND_SG() && rt->getSize() > 2) { - Fix this isTarget can not be
+    // called here
     if (is_target && IS_PAIRWISE_AND_SG() && rt->getSize() > 2) {
         rt->reduceSumDouble(&throughput_gb, &totalbw, 0);
         return;
@@ -646,14 +648,16 @@ xferMetricStats::reset() {
  * xferBenchStats
  */
 
-void xferBenchStats::reset() {
+void
+xferBenchStats::reset() {
     total_duration.reset();
     prepare_duration.reset();
     post_duration.reset();
     transfer_duration.reset();
 }
 
-void xferBenchStats::add(const xferBenchStats& other) {
+void
+xferBenchStats::add(const xferBenchStats &other) {
     total_duration.add(other.total_duration);
     prepare_duration.add(other.prepare_duration);
     post_duration.add(other.post_duration);
