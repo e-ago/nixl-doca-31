@@ -22,7 +22,7 @@ The QueryMem API has been implemented for all file backends:
 ### How it works:
 
 1. **Input**: Takes a `nixl_reg_dlist_t` containing file descriptors with filenames in the `metaInfo` field
-2. **Processing**: 
+2. **Processing**:
    - Uses `extractMetadata()` method from `nixlDescList` class to extract filenames from descriptors
    - Calls `queryFileInfoList()` to check file existence using `stat`
    - Strips any prefixes (RO:, RW:, WR:) before checking file existence
