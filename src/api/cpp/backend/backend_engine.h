@@ -191,6 +191,9 @@ class nixlBackendEngine {
         // Query information about a list of memory/storage
         virtual nixl_status_t
         queryMem(const nixl_reg_dlist_t &descs, std::vector<nixl_query_resp_t> &resp) const {
+            // Default implementation for file backends
+            // File backends can override this to provide custom implementation
+            // For now, return not supported - for object backends
             return NIXL_ERR_NOT_SUPPORTED;
         }
 
