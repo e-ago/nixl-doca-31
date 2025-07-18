@@ -752,13 +752,14 @@ thread_local nixlUcxThreadContext* nixlUcxThreadContext::tlsCtx = nullptr;
 
 nixlUcxThreadPoolEngine::nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params)
     : nixlUcxEngine(init_params) {
-    if (init_params.numThreads >= uws.size()) {
+    size_t numThreads = init_params.getOrDefault("num_threads", 0);
+    if (numThreads >= uws.size()) {
         throw std::invalid_argument("Number of threads is greater than number of workers");
     }
 
     m_io = std::make_unique<asio::io_context>();
 
-    m_numDedicatedWorkers = std::min(init_params.numThreads, uws.size() - 1);
+    m_numDedicatedWorkers = std::min(numThreads, uws.size() - 1);
     m_threadContexts.reserve(m_numDedicatedWorkers);
     m_numSharedWorkers = uws.size() - m_numDedicatedWorkers;
 
@@ -877,7 +878,8 @@ std::unique_ptr<nixlUcxEngine>
 nixlUcxEngine::create(const nixlBackendInitParams &init_params)
 {
     nixlUcxEngine *engine;
-    if (init_params.numThreads > 0) {
+    size_t numThreads = init_params.getOrDefault("num_threads", 0);
+    if (numThreads > 0) {
         engine = new nixlUcxThreadPoolEngine(init_params);
     } else if (init_params.enableProgTh) {
         engine = new nixlUcxThreadEngine(init_params);
@@ -896,12 +898,11 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
     if (custom_params->count("device_list")!=0)
         devs = str_split((*custom_params)["device_list"], ", ");
 
-    const auto num_workers_iter = custom_params->find("num_workers");
-    if (num_workers_iter == custom_params->end() || !absl::SimpleAtoi(num_workers_iter->second, &numWorkers))
-        numWorkers = 1;
+    numWorkers = init_params.getOrDefault("num_workers", 1);
+    size_t numThreads = init_params.getOrDefault("num_threads", 0);
 
-    if (numWorkers < init_params.numThreads) {
-        numWorkers = init_params.numThreads + 1;
+    if (numWorkers < numThreads) {
+        numWorkers = numThreads + 1;
     }
 
     ucp_err_handling_mode_t err_handling_mode;
@@ -924,7 +925,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
                                           sizeof(nixlUcxIntReq),
                                           _internalRequestInit,
                                           _internalRequestFini,
-                                          init_params.numThreads > 0,
+                                          init_params.enableProgTh,
                                           numWorkers,
                                           init_params.syncMode);
 

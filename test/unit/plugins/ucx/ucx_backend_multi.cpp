@@ -45,7 +45,6 @@ void test_thread(int id)
 
     init_params.localAgent   = my_name;
     init_params.enableProgTh = USE_PTHREAD;
-    init_params.numThreads   = 0;
     init_params.customParams = &custom_params;
     init_params.type         = "UCX";
 
