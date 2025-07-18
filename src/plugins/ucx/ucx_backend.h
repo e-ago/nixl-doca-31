@@ -290,16 +290,15 @@ class nixlUcxThreadEngine : public nixlUcxEngine {
         nixl_status_t getNotifs(notif_list_t &notif_list) override;
 };
 
-namespace asio { class io_context; }
 class nixlUcxThreadContext;
 
 class nixlUcxThreadPoolEngine : public nixlUcxEngine {
     protected:
-        std::unique_ptr<asio::io_context> m_io;
-        std::vector<std::thread> m_threads;
-        std::vector<nixlUcxThreadContext> m_threadContexts;
-        size_t m_numSharedWorkers;
-        size_t m_numDedicatedWorkers;
+        std::unique_ptr<nixlUcxThreadContext> m_sharedCtx;
+        std::unique_ptr<nixlUcxThreadContext> m_dedicatedCtx;
+
+        std::mutex m_notifMutex;
+        notif_list_t m_notifList;
 
         int vramApplyCtx() override;
 
@@ -325,12 +324,7 @@ class nixlUcxThreadPoolEngine : public nixlUcxEngine {
 
         bool supportsProgTh() const override { return true; }
 
-        // Returns shared worker id, that is used to tranfer small batches and
-        // send notifications
-        size_t getWorkerId() const override {
-            std::thread::id id = std::this_thread::get_id();
-            return (std::hash<std::thread::id>{}(id) % m_numSharedWorkers) + m_numDedicatedWorkers;
-        }
+        size_t getWorkerId() const override;
 };
 
 #endif

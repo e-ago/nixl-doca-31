@@ -616,6 +616,12 @@ nixl_status_t nixlUcxThreadEngine::getNotifs(notif_list_t &notif_list)
  * Threadpool engine
 *****************************************/
 
+/*
+ * This class represents a composite request handle for a UCX backend.
+ * It is used to encapsulate multiple parallel requests performed by dedicated
+ * worker threads of threadpool, with a single request handle, that it returned
+ * to the user.
+ */
 class nixlUcxCompositeBackendH : public nixlUcxBackendH {
     public:
         nixlUcxCompositeBackendH(nixlUcxWorker *worker, size_t workerId,
@@ -663,120 +669,210 @@ class nixlUcxCompositeBackendH : public nixlUcxBackendH {
         size_t m_chunkSize;
 };
 
-class nixlUcxThreadContext {
+/*
+ * This class encapsulates a thread that polls one or multiple UCX workers
+ */
+class nixlUcxThread {
     public:
-        nixlUcxThreadContext(asio::io_context &io, nixlUcxWorker &worker,
-                             size_t workerId) :
-            m_io(io), m_worker(worker), m_workerId(workerId),
-            m_ev(m_io, m_worker.getEfd()) {}
+        nixlUcxThread(asio::io_context &io, std::vector<nixlUcxWorker *> workers,
+                      std::function<void()> notify) :
+            m_io(io),
+            m_workers(std::move(workers)),
+            m_notify(notify) {
+            m_descriptors.reserve(m_workers.size());
+            for (auto &worker : m_workers) {
+                m_descriptors.emplace_back(m_io, worker->getEfd());
+            }
+        }
 
-    void operator()() {
-        nixlUcxThreadContext::tlsCtx = this;
+        void start() {
+            m_thread = std::make_unique<std::thread>(std::ref(*this));
+        }
 
-        // keep io_context alive even if queue is temporarily empty
-        auto guard = asio::make_work_guard(m_io);
+        void join() {
+            m_thread->join();
+        }
 
-        // TODO: try single polling thread
-        auto workerEvents = [&](auto&& self)->void {
-            nixl_status_t status;
-            do {
-                while (m_worker.progress());
-                status = m_worker.arm();
-            } while (status == NIXL_IN_PROG);
+        size_t getNumWorkers() const {
+            return m_workers.size();
+        }
 
-            uint64_t buf;
-            m_ev.async_read_some(asio::buffer(&buf, sizeof(buf)),
-                [&, self](const asio::error_code& ec, size_t bytes_read) {
-                    if (!ec) {
-                        self(self);
+        virtual void operator()() {
+            tlsThread = this;
+            auto guard = asio::make_work_guard(m_io);
+            handleEvents();
+            m_io.run();
+        }
+
+    protected:
+        void handleEvents() {
+            for (size_t i = 0; i < m_workers.size(); ++i) {
+                auto &worker = m_workers[i];
+                auto &descriptor = m_descriptors[i];
+                /* Handle notifications only from the first worker */
+                bool notify = (m_notify != nullptr) && (i == 0);
+
+                auto workerEvents = [&](auto &&self) -> void {
+                    bool madeProgress = false;
+                    do {
+                        while (worker->progress()) madeProgress = true;
+                    } while (worker->arm() == NIXL_IN_PROG);
+
+                    if (notify && madeProgress) {
+                        m_notify();
                     }
-                });
-        };
-        workerEvents(workerEvents);
 
-        while (!m_io.stopped()) {
-            // If there are pending requests, poll task queue in order to prioritize
-            // new post requests over pending requests
-            if (!m_requests.empty()) {
-                m_io.poll_one();
-            } else {
-                // Otherwise blocking wait for new requests
-                m_io.run_one();
+                    uint64_t buf;
+                    descriptor.async_read_some(asio::buffer(&buf, sizeof(buf)),
+                        [&, self](const asio::error_code& ec, size_t bytes_read) {
+                            if (!ec) {
+                                self(self);
+                            }
+                        });
+                };
+                workerEvents(workerEvents);
             }
+        }
 
-            if (m_requests.empty()) {
-                for (size_t i = 0; i < nixlUcxBackendH::MAX_PROGRESS && m_worker.progress(); i++);
-                continue;
-            }
+        asio::io_context &m_io;
+        std::vector<nixlUcxWorker *> m_workers;
+        std::vector<asio::posix::stream_descriptor> m_descriptors;
+        std::function<void()> m_notify;
+        std::unique_ptr<std::thread> m_thread;
 
-            size_t maxProgress = nixlUcxBackendH::MAX_PROGRESS / m_requests.size();
-            for (auto it = m_requests.begin(); it != m_requests.end();) {
-                if ((*it)->status(maxProgress) == NIXL_SUCCESS) {
-                    (*it)->complete();
-                    it = m_requests.erase(it);
+        static thread_local nixlUcxThread* tlsThread;
+};
+
+thread_local nixlUcxThread* nixlUcxThread::tlsThread = nullptr;
+
+class nixlUcxDedicatedThread : public nixlUcxThread {
+    public:
+        nixlUcxDedicatedThread(asio::io_context &io, nixlUcxWorker *worker, size_t workerId) :
+            nixlUcxThread(io, {worker}, nullptr),
+            m_workerId(workerId) {}
+
+        void operator()() override {
+            tlsThread = this;
+            auto guard = asio::make_work_guard(m_io);
+            handleEvents();
+            nixlUcxWorker *worker = getWorker();
+
+            while (!m_io.stopped()) {
+                // If there are pending requests, poll task queue in order to prioritize
+                // new post requests over pending requests
+                if (!m_requests.empty()) {
+                    m_io.poll_one();
                 } else {
-                    ++it;
+                    // Otherwise blocking wait for new requests
+                    m_io.run_one();
+                }
+
+                if (m_requests.empty()) {
+                    for (size_t i = 0; i < nixlUcxBackendH::MAX_PROGRESS && worker->progress(); i++);
+                    continue;
+                }
+
+                size_t maxProgress = nixlUcxBackendH::MAX_PROGRESS / m_requests.size();
+                for (auto it = m_requests.begin(); it != m_requests.end();) {
+                    if ((*it)->status(maxProgress) == NIXL_SUCCESS) {
+                        (*it)->complete();
+                        it = m_requests.erase(it);
+                    } else {
+                        ++it;
+                    }
                 }
             }
         }
-    }
 
-    nixlUcxWorker& getWorker() const {
-        return m_worker;
-    }
+        nixlUcxWorker *getWorker() const {
+            return m_workers.front();
+        }
 
-    size_t getWorkerId() const {
-        return m_workerId;
-    }
+        size_t getWorkerId() const {
+            return m_workerId;
+        }
 
-    static nixlUcxThreadContext& getCtx() {
-        return *tlsCtx;
-    }
+        static nixlUcxDedicatedThread& getDedicatedThread() {
+            return (nixlUcxDedicatedThread&) *tlsThread;
+        }
 
-    void addRequest(nixlUcxBackendH *handle) {
-        m_requests.push_back(handle);
-    }
+        void addRequest(nixlUcxBackendH *handle) {
+            m_requests.push_back(handle);
+        }
 
     private:
-        asio::io_context &m_io;
-        nixlUcxWorker &m_worker;
         size_t m_workerId;
-        asio::posix::stream_descriptor m_ev;
-        // TODO: make it intrusive
-        std::list<nixlUcxBackendH *> m_requests;
-
-        static thread_local nixlUcxThreadContext* tlsCtx;
+        std::vector<nixlUcxBackendH *> m_requests;
 };
 
-thread_local nixlUcxThreadContext* nixlUcxThreadContext::tlsCtx = nullptr;
+class nixlUcxThreadContext {
+    public:
+        ~nixlUcxThreadContext() {
+            stop();
+        }
+
+        void addThread(std::unique_ptr<nixlUcxThread> thread) {
+            m_threads.push_back(std::move(thread));
+            m_numWorkers += thread->getNumWorkers();
+        }
+
+        size_t getNumWorkers() const {
+            return m_numWorkers;
+        }
+
+        asio::io_context& io() {
+            return *m_io;
+        }
+
+        void start() {
+            for (auto &thread : m_threads) {
+                thread->start();
+            }
+        }
+
+        void stop() {
+            m_io->stop();
+            for (auto &thread : m_threads) {
+                thread->join();
+            }
+        }
+
+    private:
+        std::unique_ptr<asio::io_context> m_io;
+        std::vector<std::unique_ptr<nixlUcxThread>> m_threads;
+        size_t m_numWorkers;
+};
 
 nixlUcxThreadPoolEngine::nixlUcxThreadPoolEngine(const nixlBackendInitParams &init_params)
     : nixlUcxEngine(init_params) {
     size_t numThreads = init_params.getOrDefault("num_threads", 0);
-    if (numThreads >= uws.size()) {
-        throw std::invalid_argument("Number of threads is greater than number of workers");
+    size_t numSharedWorkers = uws.size() - numThreads;
+    NIXL_ASSERT(numSharedWorkers > 0) << "No shared workers";
+
+    if (init_params.enableProgTh) {
+        m_sharedCtx = std::make_unique<nixlUcxThreadContext>();
+
+        std::vector<nixlUcxWorker *> sharedWorkers;
+        for (size_t i = 0; i < numSharedWorkers; ++i) {
+            sharedWorkers.push_back(getWorker(i).get());
+        }
+        m_sharedCtx->addThread(std::make_unique<nixlUcxThread>(
+            m_sharedCtx->io(), sharedWorkers, nullptr));
+        m_sharedCtx->start();
     }
 
-    m_io = std::make_unique<asio::io_context>();
-
-    m_numDedicatedWorkers = std::min(numThreads, uws.size() - 1);
-    m_threadContexts.reserve(m_numDedicatedWorkers);
-    m_numSharedWorkers = uws.size() - m_numDedicatedWorkers;
-
-    for (size_t i = 0; i < m_numDedicatedWorkers; i++) {
-        // Shared workers come first in the array
-        size_t workerId = i;
-        m_threadContexts.emplace_back(*m_io, *getWorker(workerId), workerId);
-        m_threads.emplace_back(std::ref(m_threadContexts.back()));
+    if (numThreads > 0) {
+        m_dedicatedCtx = std::make_unique<nixlUcxThreadContext>();
+        for (size_t i = 0; i < numThreads; ++i) {
+            size_t workerId = numSharedWorkers + i;
+            m_dedicatedCtx->addThread(std::make_unique<nixlUcxDedicatedThread>(
+                m_dedicatedCtx->io(), getWorker(workerId).get(), workerId));
+        }
+        m_dedicatedCtx->start();
     }
 }
 
 nixlUcxThreadPoolEngine::~nixlUcxThreadPoolEngine() {
-    m_io->stop();
-    for (auto &thread : m_threads) {
-        thread.join();
-    }
-
     /* Explicitly clear UCX resources because this class injects event descriptor
      * into the UCX worker and this descriptor must be valid when worker is
      * destroyed. */
@@ -804,7 +900,7 @@ nixlUcxThreadPoolEngine::prepXfer(const nixl_xfer_op_t &operation,
         return nixlUcxEngine::prepXfer(operation, local, remote, remote_agent, handle, opt_args);
     }
 
-    size_t chunkSize = std::clamp(batchSize / m_numDedicatedWorkers,
+    size_t chunkSize = std::clamp(batchSize / m_dedicatedCtx->getNumWorkers(),
                                   MIN_CHUNK_SIZE, MAX_CHUNK_SIZE);
     size_t numChunks = (batchSize + chunkSize - 1) / chunkSize;
 
@@ -836,10 +932,10 @@ nixlUcxThreadPoolEngine::sendXferRange(const nixl_xfer_op_t &operation,
     std::atomic<nixl_status_t> status{NIXL_SUCCESS};
 
     for (size_t i = 0; i < compHandle->getNumChunks(); i++) {
-        m_io->post([&, i]() {
-            nixlUcxThreadContext& ctx = nixlUcxThreadContext::getCtx();
+        m_dedicatedCtx->io().post([&, i]() {
+            auto& thread = nixlUcxDedicatedThread::getDedicatedThread();
             nixlUcxBackendH *chunkHandle = compHandle->getChunk(i);
-            chunkHandle->start(&ctx.getWorker(), ctx.getWorkerId());
+            chunkHandle->start(thread.getWorker(), thread.getWorkerId());
 
             size_t startIdx = i * chunkSize;
             size_t endIdx = std::min(startIdx + chunkSize, (size_t)local.descCount());
@@ -852,7 +948,7 @@ nixlUcxThreadPoolEngine::sendXferRange(const nixl_xfer_op_t &operation,
                 chunkHandle->release();
                 chunkHandle->complete();
             } else {
-                ctx.addRequest(chunkHandle);
+                thread.addRequest(chunkHandle);
             }
 
             if (remaining.fetch_sub(1) == 1) {
@@ -868,6 +964,11 @@ nixlUcxThreadPoolEngine::sendXferRange(const nixl_xfer_op_t &operation,
 int nixlUcxThreadPoolEngine::vramApplyCtx() {
     // TODO: apply ctx to all dedicated workers
     return nixlUcxEngine::vramApplyCtx();
+}
+
+size_t nixlUcxThreadPoolEngine::getWorkerId() const {
+    std::thread::id id = std::this_thread::get_id();
+    return (std::hash<std::thread::id>{}(id) % m_sharedCtx->getNumWorkers());
 }
 
 /****************************************
@@ -901,7 +1002,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams& init_params)
     numWorkers = init_params.getOrDefault("num_workers", 1);
     size_t numThreads = init_params.getOrDefault("num_threads", 0);
 
-    if (numWorkers < numThreads) {
+    if (numWorkers <= numThreads) {
         numWorkers = numThreads + 1;
     }
 
