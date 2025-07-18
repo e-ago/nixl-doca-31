@@ -812,8 +812,8 @@ class nixlUcxThreadContext {
         }
 
         void addThread(std::unique_ptr<nixlUcxThread> thread) {
-            m_threads.push_back(std::move(thread));
             m_numWorkers += thread->getNumWorkers();
+            m_threads.push_back(std::move(thread));
         }
 
         size_t getNumWorkers() const {
@@ -821,7 +821,7 @@ class nixlUcxThreadContext {
         }
 
         asio::io_context& io() {
-            return *m_io;
+            return m_io;
         }
 
         void start() {
@@ -831,14 +831,14 @@ class nixlUcxThreadContext {
         }
 
         void stop() {
-            m_io->stop();
+            m_io.stop();
             for (auto &thread : m_threads) {
                 thread->join();
             }
         }
 
     private:
-        std::unique_ptr<asio::io_context> m_io;
+        asio::io_context m_io;
         std::vector<std::unique_ptr<nixlUcxThread>> m_threads;
         size_t m_numWorkers;
 };

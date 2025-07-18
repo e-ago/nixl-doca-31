@@ -98,8 +98,8 @@ protected:
     static nixlAgentConfig getConfig(int listen_port)
     {
         return nixlAgentConfig(true, listen_port > 0, listen_port,
-                               nixl_thread_sync_t::NIXL_THREAD_SYNC_RW,
-                               getNumThreads(), 0, 100000);
+                               nixl_thread_sync_t::NIXL_THREAD_SYNC_RW, 0,
+                               100000);
     }
 
     static int getPort(int i)
@@ -113,6 +113,7 @@ protected:
 
         if (getBackendName() == "UCX" || getBackendName() == "UCX_MO") {
             params["num_workers"] = std::to_string(getNumWorkers());
+            params["num_threads"] = std::to_string(getNumThreads());
         }
 
         return params;
