@@ -609,22 +609,25 @@ xferMetricStats::avg() const {
 }
 
 double
-xferMetricStats::p90() const {
+xferMetricStats::p90() {
     if (samples.empty()) return 0;
+    std::sort(samples.begin(), samples.end());
     size_t index = samples.size() * 0.9;
     return samples[std::min(index, samples.size() - 1)];
 }
 
 double
-xferMetricStats::p95() const {
+xferMetricStats::p95() {
     if (samples.empty()) return 0;
+    std::sort(samples.begin(), samples.end());
     size_t index = samples.size() * 0.95;
     return samples[std::min(index, samples.size() - 1)];
 }
 
 double
-xferMetricStats::p99() const {
+xferMetricStats::p99() {
     if (samples.empty()) return 0;
+    std::sort(samples.begin(), samples.end());
     size_t index = samples.size() * 0.99;
     return samples[std::min(index, samples.size() - 1)];
 }

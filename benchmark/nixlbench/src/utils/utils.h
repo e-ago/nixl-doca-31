@@ -175,11 +175,11 @@ public:
     double
     avg() const;
     double
-    p90() const;
+    p90();
     double
-    p95() const;
+    p95();
     double
-    p99() const;
+    p99();
 
     void
     add(double value);
