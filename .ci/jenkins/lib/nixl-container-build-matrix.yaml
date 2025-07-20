@@ -34,6 +34,7 @@ env:
   ARTIFACTORY_BASE_REPO: "sw-nbu-swx-nixl-docker-local"
   LOCAL_TAG_BASE: "nixl-ci:build-"
   MAIL_FROM: "jenkins@nvidia.com"
+  NPROC: "10"
 
 credentials:
   - credentialsId: 'svc-nixl-artifactory-token'
