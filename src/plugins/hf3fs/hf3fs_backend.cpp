@@ -60,7 +60,6 @@ nixl_status_t nixlHf3fsEngine::registerMem (const nixlBlobDesc &mem,
                                             nixlBackendMD* &out)
 {
     nixl_status_t status;
-    int fd;
     int ret;
     nixlHf3fsMetadata *md = new nixlHf3fsMetadata();
 
@@ -81,22 +80,19 @@ nixl_status_t nixlHf3fsEngine::registerMem (const nixlBlobDesc &mem,
                 break;
             }
 
-            // Use devId as file descriptor for now
-            fd = mem.devId;
-
             ret = 0;
-            status = hf3fs_utils->registerFileHandle(fd, &ret);
+            status = hf3fs_utils->registerFileHandle(mem.devId, &ret);
             if (status != NIXL_SUCCESS) {
                 delete md;
                 HF3FS_LOG_RETURN(status,
-                    absl::StrFormat("Error - failed to register file handle %d", fd));
+                    absl::StrFormat("Error - failed to register file handle %d", mem.devId));
             }
-            md->handle.fd = fd;
+            md->handle.fd = mem.devId;
             md->handle.size = mem.len;
             md->handle.metadata = mem.metaInfo;
             md->type = nixl_mem;
 
-            hf3fs_file_set.insert (fd);
+            hf3fs_file_set.insert (mem.devId);
             break;
         }
         case VRAM_SEG:

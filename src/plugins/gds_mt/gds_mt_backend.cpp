@@ -212,10 +212,8 @@ nixlGdsMtEngine::registerMem (const nixlBlobDesc &mem,
             gds_mt_file_map_.erase (it);
         }
 
-        int fd = mem.devId;
-
         try {
-            handle = std::make_shared<gdsMtFileHandle> (fd);
+            handle = std::make_shared<gdsMtFileHandle> (mem.devId);
         }
         catch (const std::exception &e) {
             NIXL_ERROR << "GDS_MT: failed to create file handle: " << e.what();

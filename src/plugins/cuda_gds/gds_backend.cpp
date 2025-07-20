@@ -111,11 +111,7 @@ nixl_status_t nixlGdsEngine::registerMem(const nixlBlobDesc &mem,
                 break;
             }
 
-            int fd;
-            // Use devId as file descriptor for now
-            fd = mem.devId;
-
-            status = gds_utils->registerFileHandle(fd, mem.len,
+            status = gds_utils->registerFileHandle(mem.devId, mem.len,
                                                    mem.metaInfo, md->handle);
             if (status == NIXL_SUCCESS) {
                 gds_file_map[mem.devId] = md->handle;
