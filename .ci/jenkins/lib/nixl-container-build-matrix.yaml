@@ -178,6 +178,12 @@ steps:
         echo "Latest tag updated: ${ARTIFACTORY_REGISTRY}:${BASE_IMAGE_TAG}-${BUILD_TARGET}-${arch}-latest"
       fi
 
+      echo -e "\nBuild config for manual repro:"
+      if [[ "${BUILD_TARGET}" == "nixlbench" ]]; then
+        echo "git clone https://github.com/openucx/ucx.git ucx-src && cd ucx-src && git checkout ${UCX_VERSION} && cd .."
+      fi
+      echo "${BUILD_SCRIPT} --base-image ${BASE_IMAGE} --base-image-tag ${BASE_IMAGE_TAG} --tag ${LOCAL_TAG} --arch ${arch} --no-cache ${BUILD_ARGS}"
+
 pipeline_stop:
   shell: action
   module: groovy
