@@ -20,72 +20,129 @@
 #include <cassert>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <filesystem>
 #include "utils/file/file_utils.h"
 
 int main() {
-    // Create a temporary test file
-    std::string test_filename = "/tmp/nixl_test_file.txt";
-    std::ofstream test_file(test_filename);
-    test_file << "Test content" << std::endl;
-    test_file.close();
+    // Create temporary test files
+    std::string test_file1 = "/tmp/nixl_test_file_1.txt";
+    std::string test_file2 = "/tmp/nixl_test_file_2.txt";
+    std::string non_existent_file = "/tmp/nixl_test_nonexistent_file.txt";
 
-    // Test prefixedOpen without prefix (should not open file)
-    int fd = -1;
-    int result = prefixedOpen(test_filename, &fd);
-    assert(result == 0);
-    assert(fd == -1); // No file opened when no prefix
-    std::cout << "✓ prefixedOpen without prefix test passed" << std::endl;
+    // Create test file 1
+    {
+        std::ofstream test_file(test_file1);
+        test_file << "Test content for file 1" << std::endl;
+        test_file.close();
+    }
 
-    // Test prefixedOpen with RO: prefix
-    std::string ro_prefix = "RO:" + test_filename;
-    fd = -1;
-    result = prefixedOpen(ro_prefix, &fd); // should use O_RDONLY and 0444 mode
-    assert(result == 0);
-    assert(fd >= 0);
-    close(fd);
-    std::cout << "✓ prefixedOpen with RO: prefix test passed" << std::endl;
+    // Create test file 2
+    {
+        std::ofstream test_file(test_file2);
+        test_file << "Test content for file 2" << std::endl;
+        test_file.close();
+    }
 
-    // Test prefixedOpen with RW: prefix
-    std::string rw_prefix = "RW:" + test_filename;
-    fd = -1;
-    result = prefixedOpen(rw_prefix, &fd); // should use O_RDWR and 0644 mode
-    assert(result == 0);
-    assert(fd >= 0);
-    close(fd);
-    std::cout << "✓ prefixedOpen with RW: prefix test passed" << std::endl;
+    // Test 1: queryFileInfo with existing file
+    {
+        nixl_query_resp_t resp;
+        nixl_status_t status = queryFileInfo(test_file1, resp);
 
-    // Test prefixedOpen with WR: prefix
-    std::string wr_prefix = "WR:" + test_filename;
-    fd = -1;
-    result = prefixedOpen(wr_prefix, &fd); // should use O_WRONLY and 0222 mode
-    assert(result == 0);
-    assert(fd >= 0);
-    close(fd);
-    std::cout << "✓ prefixedOpen with WR: prefix test passed" << std::endl;
+        assert(status == NIXL_SUCCESS);
+        assert(resp.accessible == true);
+        assert(resp.info.find("size") != resp.info.end());
+        assert(resp.info.find("mode") != resp.info.end());
+        assert(resp.info.find("mtime") != resp.info.end());
 
-    // Test queryMemFiles with prefixed filenames (commented out due to linking issues)
-    // nixl_reg_dlist_t descs(FILE_SEG, false);
-    // nixlBlobDesc desc1(0, 0, 0, ro_prefix);
-    // nixlBlobDesc desc2(0, 0, 0, rw_prefix);
-    // nixlBlobDesc desc3(0, 0, 0, wr_prefix);
-    // descs.addDesc(desc1);
-    // descs.addDesc(desc2);
-    // descs.addDesc(desc3);
+        std::cout << "✓ queryFileInfo with existing file test passed" << std::endl;
+    }
 
-    // std::vector<nixl_query_resp_t> resp;
-    // nixl_status_t status = queryMemFiles(descs, resp);
-    // assert(status == NIXL_SUCCESS);
-    // assert(resp.size() == 3);
-    // assert(resp[0].accessible == true);
-    // assert(resp[1].accessible == true);
-    // assert(resp[2].accessible == true);
-    // assert(resp[0].info.find("size") != resp[0].info.end());
-    // assert(resp[1].info.find("size") != resp[1].info.end());
-    // assert(resp[2].info.find("size") != resp[2].info.end());
-    // std::cout << "✓ queryMemFiles with prefixed filenames test passed" << std::endl;
+    // Test 2: queryFileInfo with non-existent file
+    {
+        nixl_query_resp_t resp;
+        nixl_status_t status = queryFileInfo(non_existent_file, resp);
+
+        assert(status == NIXL_SUCCESS);
+        assert(resp.accessible == false);
+        assert(resp.info.empty());
+
+        std::cout << "✓ queryFileInfo with non-existent file test passed" << std::endl;
+    }
+
+    // Test 3: queryFileInfo with empty filename
+    {
+        nixl_query_resp_t resp;
+        nixl_status_t status = queryFileInfo("", resp);
+
+        assert(status == NIXL_ERR_INVALID_PARAM);
+
+        std::cout << "✓ queryFileInfo with empty filename test passed" << std::endl;
+    }
+
+    // Test 4: queryFileInfoList with multiple existing files
+    {
+        std::vector<std::string> filenames = {test_file1, test_file2};
+        std::vector<nixl_query_resp_t> resp;
+        nixl_status_t status = queryFileInfoList(filenames, resp);
+
+        assert(status == NIXL_SUCCESS);
+        assert(resp.size() == 2);
+        assert(resp[0].accessible == true);
+        assert(resp[1].accessible == true);
+        assert(resp[0].info.find("size") != resp[0].info.end());
+        assert(resp[1].info.find("size") != resp[1].info.end());
+
+        std::cout << "✓ queryFileInfoList with existing files test passed" << std::endl;
+    }
+
+    // Test 5: queryFileInfoList with mixed existing and non-existent files
+    {
+        std::vector<std::string> filenames = {test_file1, non_existent_file, test_file2};
+        std::vector<nixl_query_resp_t> resp;
+        nixl_status_t status = queryFileInfoList(filenames, resp);
+
+        assert(status == NIXL_SUCCESS);
+        assert(resp.size() == 3);
+        assert(resp[0].accessible == true);   // test_file1 exists
+        assert(resp[1].accessible == false);  // non_existent_file doesn't exist
+        assert(resp[2].accessible == true);   // test_file2 exists
+        assert(resp[0].info.find("size") != resp[0].info.end());
+        assert(resp[1].info.empty());         // No info for non-existent file
+        assert(resp[2].info.find("size") != resp[2].info.end());
+
+        std::cout << "✓ queryFileInfoList with mixed files test passed" << std::endl;
+    }
+
+    // Test 6: queryFileInfoList with empty vector
+    {
+        std::vector<std::string> filenames;
+        std::vector<nixl_query_resp_t> resp;
+        nixl_status_t status = queryFileInfoList(filenames, resp);
+
+        assert(status == NIXL_SUCCESS);
+        assert(resp.empty());
+
+        std::cout << "✓ queryFileInfoList with empty vector test passed" << std::endl;
+    }
+
+    // Test 7: queryFileInfoList with empty filenames
+    {
+        std::vector<std::string> filenames = {"", "", ""};
+        std::vector<nixl_query_resp_t> resp;
+        nixl_status_t status = queryFileInfoList(filenames, resp);
+
+        assert(status == NIXL_SUCCESS);
+        assert(resp.size() == 3);
+        assert(resp[0].accessible == false);
+        assert(resp[1].accessible == false);
+        assert(resp[2].accessible == false);
+
+        std::cout << "✓ queryFileInfoList with empty filenames test passed" << std::endl;
+    }
 
     // Clean up
-    std::remove(test_filename.c_str());
+    std::filesystem::remove(test_file1);
+    std::filesystem::remove(test_file2);
 
     std::cout << "All file utils tests passed!" << std::endl;
     return 0;

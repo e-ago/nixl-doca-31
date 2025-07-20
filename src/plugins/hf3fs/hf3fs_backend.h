@@ -32,9 +32,8 @@ class nixlHf3fsMetadata : public nixlBackendMD {
     public:
         hf3fsFileHandle  handle;
         nixl_mem_t     type;
-        bool file_opened_by_nixl; // Track if file was opened by NIXL
 
-        nixlHf3fsMetadata() : nixlBackendMD(true), file_opened_by_nixl(false) { }
+        nixlHf3fsMetadata() : nixlBackendMD(true) { }
         ~nixlHf3fsMetadata() { }
 };
 

@@ -27,15 +27,6 @@
  */
 
 /**
- * @brief Open a file with prefix handling
- * @param prefix The prefix containing the file path (e.g., "RO:/path/to/file", "RW:/path/to/file")
- * @param fd Pointer to file descriptor (output for open)
- * @param was_opened Output parameter indicating if a file was opened (true) or if devId was used as fd (false)
- * @return 0 on success, -1 on failure
- */
-int prefixedOpen(const std::string& prefix, int* fd, bool* was_opened = nullptr);
-
-/**
  * @brief Query file information for a single file
  * @param filename The filename to query (can be prefixed)
  * @param resp Output response structure

@@ -8,7 +8,7 @@ The implementation provides:
 
 1. **QueryMem API**: Implementation of the QueryMem API for file backends that uses `nixl_reg_dlist_t` with filenames in `metaInfo` and uses `stat` to check file existence.
 
-2. **File Utils (`file_utils.h` and `file_utils.cpp`)**: Utility functions for file operations including `prefixedOpen` and file query functions.
+2. **File Utils (`file_utils.h` and `file_utils.cpp`)**: Utility functions for file operations including file query functions.
 
 ## QueryMem API Implementation
 
@@ -58,64 +58,25 @@ for (const auto& result : resp) {
 ### `queryFileInfo`
 - **Purpose**: Query file information for a single file
 - **Parameters**:
-  - `filename`: The filename to query (can be prefixed)
+  - `filename`: The filename to query
   - `resp`: Output response structure
 - **Returns**: NIXL_SUCCESS on success, error code otherwise
-- **Prefix Support**: Handles prefixed filenames by stripping prefixes before checking file existence
 
 ### `queryFileInfoList`
 - **Purpose**: Query file information for multiple files
 - **Parameters**:
-  - `filenames`: Vector of filenames to query (can be prefixed)
+  - `filenames`: Vector of filenames to query
   - `resp`: Output response vector
 - **Returns**: NIXL_SUCCESS on success, error code otherwise
-- **Prefix Support**: Handles prefixed filenames by stripping prefixes before checking file existence
-
-### `prefixedOpen`
-- **Purpose**: Opens a file with prefix handling
-- **Parameters**:
-  - `prefix`: The prefix containing the file path (e.g., "RO:/path/to/file", "RW:/path/to/file")
-  - `fd`: Pointer to file descriptor (output for open)
-  - `was_opened`: Output parameter indicating if a file was opened (true) or if devId was used as fd (false)
-- **Returns**: 0 on success, -1 on failure
-- **Prefix Support**:
-  - `RO:` - Uses O_RDONLY (read-only) with mode 0444
-  - `RW:` - Uses O_RDWR (read-write) with mode 0644
-  - `WR:` - Uses O_WRONLY (write-only) with mode 0222
-  - No prefix - Returns 0 without opening a file
-
-### Note on prefixedOpen:
-
-The `prefixedOpen` function is available in `file_utils` but is **not currently used by the plugins**. The plugins currently use `devId` directly as the file descriptor. The `prefixedOpen` function is kept available for future use when prefixed filename support is needed in the plugins.
-
-### Prefix Examples:
-
-```cpp
-// The prefix parameter contains the entire string including the file path
-// The prefix type is parsed from the beginning of the string
-
-// File opening prefixes:
-"RO:/path/to/file.txt"  // Read-only prefix
-"RW:/path/to/file.txt"  // Read-write prefix
-"WR:/path/to/file.txt"  // Write-only prefix
-"/path/to/file.txt"     // No prefix
-
-// For prefixedOpen, the prefix determines the open flags and mode:
-int fd1 = -1, fd2 = -1, fd3 = -1;
-bool was_opened1, was_opened2, was_opened3;
-prefixedOpen("RO:/path/to/file.txt", &fd1, &was_opened1); // Uses O_RDONLY and mode 0444
-prefixedOpen("RW:/path/to/file.txt", &fd2, &was_opened2); // Uses O_RDWR and mode 0644
-prefixedOpen("WR:/path/to/file.txt", &fd3, &was_opened3); // Uses O_WRONLY and mode 0222
-```
 
 ## Architecture
 
 The current architecture separates concerns:
 
 1. **Descriptor Operations**: The `nixlDescList` class provides `extractMetadata()` method to extract metadata from descriptors
-2. **File Operations**: The `file_utils` provides generic file query functions (`queryFileInfo`, `queryFileInfoList`) and `prefixedOpen` for future use
+2. **File Operations**: The `file_utils` provides generic file query functions (`queryFileInfo`, `queryFileInfoList`)
 3. **Plugin Integration**: Each plugin directly uses `extractMetadata()` and `queryFileInfoList()` without intermediate layers
-4. **File Descriptor Management**: Plugins currently use `devId` directly as file descriptor, with `prefixedOpen` available for future prefixed filename support
+4. **File Descriptor Management**: Plugins currently use `devId` directly as file descriptor
 
 This approach eliminates the need for the `file_query_helper` layer and provides better separation of concerns.
 
@@ -128,8 +89,7 @@ The file utils are built as a shared library (`libfile_utils.so`) and linked wit
 ## Testing
 
 Test files are provided:
-- `test/unit/utils/file/test_file_utils.cpp`: Tests the file utils functions including prefix handling
-- `test/python/test_prefixed_open.py`: Python tests for prefixedOpen functionality
+- `test/unit/utils/file/test_file_utils.cpp`: Tests the file utils functions
 - `test/python/test_query_mem.py`: Python tests for QueryMem API functionality
 
 ## Dependencies

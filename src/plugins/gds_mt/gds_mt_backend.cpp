@@ -41,10 +41,9 @@ const size_t default_thread_count = std::max (1u, std::thread::hardware_concurre
 
 struct FileSegData {
     std::shared_ptr<gdsMtFileHandle> handle;
-    bool file_opened_by_nixl; // Track if file was opened by NIXL
 
-    FileSegData(std::shared_ptr<gdsMtFileHandle> h, bool opened = false)
-        : handle(std::move(h)), file_opened_by_nixl(opened) {}
+    FileSegData(std::shared_ptr<gdsMtFileHandle> h)
+        : handle(std::move(h)) {}
 };
 
 struct MemSegData {
@@ -74,9 +73,9 @@ struct GdsMtTransferRequestH {
 
 class nixlGdsMtMetadata : public nixlBackendMD {
 public:
-    explicit nixlGdsMtMetadata (std::shared_ptr<gdsMtFileHandle> file_handle, bool file_opened_by_nixl = false)
+    explicit nixlGdsMtMetadata (std::shared_ptr<gdsMtFileHandle> file_handle)
         : nixlBackendMD (true),
-          data_ (FileSegData{std::move (file_handle), file_opened_by_nixl}) {}
+          data_ (FileSegData{std::move (file_handle)}) {}
 
     explicit nixlGdsMtMetadata (void *addr, size_t size, int flags)
         : nixlBackendMD (true),
@@ -223,7 +222,7 @@ nixlGdsMtEngine::registerMem (const nixlBlobDesc &mem,
             return NIXL_ERR_BACKEND;
         }
         gds_mt_file_map_[mem.devId] = handle;
-        out = new nixlGdsMtMetadata (handle, false);
+        out = new nixlGdsMtMetadata (handle);
         return NIXL_SUCCESS;
     }
 

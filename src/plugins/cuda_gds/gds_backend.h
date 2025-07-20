@@ -34,9 +34,8 @@ class nixlGdsMetadata : public nixlBackendMD {
         gdsFileHandle handle;
         gdsMemBuf buf;
         nixl_mem_t type;
-        bool file_opened_by_nixl; // Track if file was opened by NIXL
 
-        nixlGdsMetadata() : nixlBackendMD(true), file_opened_by_nixl(false) { }
+        nixlGdsMetadata() : nixlBackendMD(true) { }
         ~nixlGdsMetadata() { }
 };
 

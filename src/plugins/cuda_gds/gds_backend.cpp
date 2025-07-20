@@ -114,7 +114,6 @@ nixl_status_t nixlGdsEngine::registerMem(const nixlBlobDesc &mem,
             int fd;
             // Use devId as file descriptor for now
             fd = mem.devId;
-            md->file_opened_by_nixl = false;
 
             status = gds_utils->registerFileHandle(fd, mem.len,
                                                    mem.metaInfo, md->handle);

@@ -81,11 +81,8 @@ nixl_status_t nixlHf3fsEngine::registerMem (const nixlBlobDesc &mem,
                 break;
             }
 
-            bool file_opened = false;
-
             // Use devId as file descriptor for now
             fd = mem.devId;
-            md->file_opened_by_nixl = false;
 
             ret = 0;
             status = hf3fs_utils->registerFileHandle(fd, &ret);
