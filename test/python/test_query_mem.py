@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. \
+# All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +37,9 @@ class TestQueryMem(unittest.TestCase):
         self.temp_file.close()
 
         # Create a non-existent file path
-        self.non_existent_file = "/tmp/nixl_test_nonexistent_file_12345.txt"
+        self.non_existent_file = (
+            "/tmp/nixl_test_nonexistent_file_12345.txt"
+        )
 
     def tearDown(self):
         """Clean up test environment"""
@@ -53,9 +56,10 @@ class TestQueryMem(unittest.TestCase):
         # Create a registration descriptor list
         descs = nixl_bindings.nixlRegDList(nixl_bindings.FILE_SEG, False)
 
-        # Add descriptors with file paths in metaInfo
-        descs.addDesc((0, 0, 0, self.temp_file.name))  # Existing file
-        descs.addDesc((0, 0, 0, self.non_existent_file))  # Non-existent file
+        # Existing file
+        descs.addDesc((0, 0, 0, self.temp_file.name))
+        # Non-existent file
+        descs.addDesc((0, 0, 0, self.non_existent_file))
 
         # Try to create a backend with POSIX plugin
         try:
@@ -117,7 +121,9 @@ class TestQueryMem(unittest.TestCase):
 
             except Exception as e:
                 # Some backends might not support queryMem, which is okay
-                print(f"queryMem with backend failed (expected for some backends): {e}")
+                print(
+                    f"queryMem with backend failed (expected for some backends): {e}"
+                )
         except Exception as e:
             print(f"Backend creation failed: {e}")
 
@@ -145,7 +151,8 @@ class TestQueryMem(unittest.TestCase):
             except Exception as e:
                 # Some backends might not support queryMem, which is okay
                 print(
-                    f"queryMem with empty list failed (expected for some backends): {e}"
+                    f"queryMem with empty list failed "
+                    f"(expected for some backends): {e}"
                 )
         except Exception as e:
             print(f"Backend creation failed: {e}")

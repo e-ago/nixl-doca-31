@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. \
+# All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,9 +23,12 @@ import tempfile
 # Try to import the NIXL bindings
 try:
     import _bindings as nixl_bindings
+
     NIXL_AVAILABLE = True
 except ImportError:
-    print("NIXL bindings not available. This example requires NIXL to be installed.")
+    print(
+        "NIXL bindings not available. This example requires NIXL to be installed."
+    )
     NIXL_AVAILABLE = False
 
 if __name__ == "__main__":
@@ -54,9 +58,7 @@ if __name__ == "__main__":
 
         # Create an NIXL agent
         print("Creating NIXL agent...")
-        config = nixl_bindings.nixlAgentConfig(
-            False, False
-        )  # enable_prog_thread=False, enable_listen_thread=False
+        config = nixl_bindings.nixlAgentConfig(False, False)
         agent = nixl_bindings.nixlAgent("example_agent", config)
 
         # Create a registration descriptor list
@@ -64,7 +66,6 @@ if __name__ == "__main__":
         descs = nixl_bindings.nixlRegDList(nixl_bindings.FILE_SEG, False)
 
         # Add descriptors with file paths in metaInfo
-        # Note: For file backends, the metaInfo field contains the file path
         descs.addDesc((0, 0, 0, temp_files[0]))  # Existing file 1
         descs.addDesc((0, 0, 0, temp_files[1]))  # Existing file 2
         descs.addDesc((0, 0, 0, temp_files[2]))  # Existing file 3
