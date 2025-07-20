@@ -37,9 +37,7 @@ class TestQueryMem(unittest.TestCase):
         self.temp_file.close()
 
         # Create a non-existent file path
-        self.non_existent_file = (
-            "/tmp/nixl_test_nonexistent_file_12345.txt"
-        )
+        self.non_existent_file = "/tmp/nixl_test_nonexistent_file_12345.txt"
 
     def tearDown(self):
         """Clean up test environment"""
@@ -122,7 +120,8 @@ class TestQueryMem(unittest.TestCase):
             except Exception as e:
                 # Some backends might not support queryMem, which is okay
                 print(
-                    f"queryMem with backend failed (expected for some backends): {e}"
+                    f"queryMem with backend failed "
+                    f"(expected for some backends): {e}"
                 )
         except Exception as e:
             print(f"Backend creation failed: {e}")

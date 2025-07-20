@@ -26,9 +26,7 @@ try:
 
     NIXL_AVAILABLE = True
 except ImportError:
-    print(
-        "NIXL bindings not available. This example requires NIXL to be installed."
-    )
+    print("NIXL bindings missing install NIXL.")
     NIXL_AVAILABLE = False
 
 if __name__ == "__main__":
@@ -42,15 +40,14 @@ if __name__ == "__main__":
     # Create temporary test files
     temp_files = []
     for i in range(3):
-        temp_file = tempfile.NamedTemporaryFile(
+        with tempfile.NamedTemporaryFile(
             delete=False, suffix=f"_{i}.txt", mode="wb"
-        )
-        temp_file.write(f"Test content for file {i}".encode())
-        temp_file.close()
-        temp_files.append(temp_file.name)
+        ) as temp_file:
+            temp_file.write(f"Test content for file {i}".encode())
+            temp_files.append(str(temp_file.name))
 
     # Create a non-existent file path
-    non_existent_file = "/tmp/nixl_example_nonexistent_file.txt"
+    non_existent_file = "/tmp/nixl_example_nonexistent.txt"
 
     try:
         print("Using NIXL Plugins from:")
@@ -125,7 +122,7 @@ if __name__ == "__main__":
     finally:
         # Clean up temporary files
         print("Cleaning up temporary files...")
-        for temp_file in temp_files:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
-                print(f"Removed: {temp_file}")
+        for temp_file_path in temp_files:
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+                print(f"Removed: {temp_file_path}")
