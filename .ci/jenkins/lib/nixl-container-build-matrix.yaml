@@ -61,30 +61,33 @@ steps:
       ln -sfT $(type -p podman) /usr/bin/docker
       yum install -y git gettext
 
-      # Clone UCX source
-      git clone https://github.com/openucx/ucx.git ucx-src
-      cd ucx-src && git checkout "${UCX_VERSION}"
-      cd ..
-
-      # Set build configuration based on build target
+      # Target-specific setup
       case "${BUILD_TARGET}" in
         "nixlbench")
+          # Clone UCX source for nixlbench
+          git clone https://github.com/openucx/ucx.git ucx-src
+          cd ucx-src && git checkout "${UCX_VERSION}"
+          cd ..
+
           ARTIFACTORY_REPO_PATH="${ARTIFACTORY_BASE_REPO}/verification/nixlbench"
           BUILD_SCRIPT="benchmark/nixlbench/contrib/build.sh"
           BUILD_ARGS="--nixl $PWD --ucx $PWD/ucx-src"
+          CLEAN_UCX=$(cd ucx-src && git rev-parse --short=8 HEAD)
           ;;
         "nixl")
+          # nixl builds its own UCX - no clone needed
           ARTIFACTORY_REPO_PATH="${ARTIFACTORY_BASE_REPO}/verification/nixl"
           BUILD_SCRIPT="contrib/build-container.sh"
           BUILD_ARGS="--dockerfile contrib/Dockerfile"
+          # Extract UCX version from build script
+          CLEAN_UCX=$(grep "^UCX_REF=" contrib/build-container.sh | cut -d'=' -f2)
           ;;
       esac
 
-      # Calculate common values once
+      # Calculate common values
       LOCAL_TAG="${LOCAL_TAG_BASE}${arch}"
       ARTIFACTORY_REGISTRY="${ARTIFACTORY_HOST}/${ARTIFACTORY_REPO_PATH}"
       CLEAN_NIXL=$(git rev-parse --short=8 HEAD)
-      CLEAN_UCX=$(cd ucx-src && git rev-parse --short=8 HEAD)
       TAG_NAME="${BASE_IMAGE_TAG}-${BUILD_TARGET}-${CLEAN_NIXL}-ucx-${CLEAN_UCX}-${arch}${TAG_SUFFIX:+-${TAG_SUFFIX}}"
       ARTIFACTORY_API="https://${ARTIFACTORY_HOST}/artifactory/api/storage/${ARTIFACTORY_REPO_PATH}"
 
