@@ -21,6 +21,7 @@ Test script for NIXL queryMem Python bindings
 import os
 import tempfile
 import unittest
+
 import _bindings as nixl_bindings
 
 
@@ -58,8 +59,8 @@ class TestQueryMem(unittest.TestCase):
 
         # Try to create a backend with POSIX plugin
         try:
-            params, mems = agent.getPluginParams('POSIX')
-            backend = agent.createBackend('POSIX', params)
+            params, mems = agent.getPluginParams("POSIX")
+            backend = agent.createBackend("POSIX", params)
 
             # Query memory with specific backend
             try:
@@ -84,8 +85,8 @@ class TestQueryMem(unittest.TestCase):
             print(f"Backend creation failed: {e}")
             # Try MOCK_DRAM as fallback
             try:
-                params, mems = agent.getPluginParams('MOCK_DRAM')
-                backend = agent.createBackend('MOCK_DRAM', params)
+                params, mems = agent.getPluginParams("MOCK_DRAM")
+                backend = agent.createBackend("MOCK_DRAM", params)
                 print("Using MOCK_DRAM backend")
             except Exception as e2:
                 print(f"MOCK_DRAM also failed: {e2}")
@@ -99,8 +100,8 @@ class TestQueryMem(unittest.TestCase):
 
         # Try to create a backend with POSIX plugin
         try:
-            params, mems = agent.getPluginParams('POSIX')
-            backend = agent.createBackend('POSIX', params)
+            params, mems = agent.getPluginParams("POSIX")
+            backend = agent.createBackend("POSIX", params)
 
             # Create a registration descriptor list
             descs = nixl_bindings.nixlRegDList(nixl_bindings.FILE_SEG, False)
@@ -131,8 +132,8 @@ class TestQueryMem(unittest.TestCase):
 
         # Try to create a backend with POSIX plugin
         try:
-            params, mems = agent.getPluginParams('POSIX')
-            backend = agent.createBackend('POSIX', params)
+            params, mems = agent.getPluginParams("POSIX")
+            backend = agent.createBackend("POSIX", params)
 
             # Query memory with specific backend
             try:
@@ -143,7 +144,9 @@ class TestQueryMem(unittest.TestCase):
 
             except Exception as e:
                 # Some backends might not support queryMem, which is okay
-                print(f"queryMem with empty list failed (expected for some backends): {e}")
+                print(
+                    f"queryMem with empty list failed (expected for some backends): {e}"
+                )
         except Exception as e:
             print(f"Backend creation failed: {e}")
 

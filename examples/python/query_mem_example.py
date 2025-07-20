@@ -16,8 +16,8 @@
 # limitations under the License.
 
 import os
-import tempfile
 import sys
+import tempfile
 
 # Try to import the NIXL bindings
 try:
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # Create temporary test files
     temp_files = []
     for i in range(3):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{i}.txt") as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{i}.txt", mode="wb") as temp_file:
             temp_file.write(f"Test content for file {i}".encode())
             temp_files.append(temp_file.name)
 
@@ -51,7 +51,9 @@ if __name__ == "__main__":
 
         # Create an NIXL agent
         print("Creating NIXL agent...")
-        config = nixl_bindings.nixlAgentConfig(False, False)  # enable_prog_thread=False, enable_listen_thread=False
+        config = nixl_bindings.nixlAgentConfig(
+            False, False
+        )  # enable_prog_thread=False, enable_listen_thread=False
         agent = nixl_bindings.nixlAgent("example_agent", config)
 
         # Create a registration descriptor list
@@ -72,8 +74,8 @@ if __name__ == "__main__":
 
         # Try to create a backend with POSIX plugin
         try:
-            params, mems = agent.getPluginParams('POSIX')
-            backend = agent.createBackend('POSIX', params)
+            params, mems = agent.getPluginParams("POSIX")
+            backend = agent.createBackend("POSIX", params)
             print("Created backend: POSIX")
 
             # Query with specific backend
@@ -82,8 +84,8 @@ if __name__ == "__main__":
             print(f"POSIX backend creation failed: {e}")
             # Try MOCK_DRAM as fallback
             try:
-                params, mems = agent.getPluginParams('MOCK_DRAM')
-                backend = agent.createBackend('MOCK_DRAM', params)
+                params, mems = agent.getPluginParams("MOCK_DRAM")
+                backend = agent.createBackend("MOCK_DRAM", params)
                 print("Created backend: MOCK_DRAM")
 
                 # Query with specific backend
@@ -113,6 +115,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error in example: {e}")
         import traceback
+
         traceback.print_exc()
 
     finally:
