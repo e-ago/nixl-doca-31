@@ -38,9 +38,12 @@ if __name__ == "__main__":
     # Create temporary test files
     temp_files = []
     for i in range(3):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{i}.txt", mode="wb") as temp_file:
-            temp_file.write(f"Test content for file {i}".encode())
-            temp_files.append(temp_file.name)
+        temp_file = tempfile.NamedTemporaryFile(
+            delete=False, suffix=f"_{i}.txt", mode="wb"
+        )
+        temp_file.write(f"Test content for file {i}".encode())
+        temp_file.close()
+        temp_files.append(temp_file.name)
 
     # Create a non-existent file path
     non_existent_file = "/tmp/nixl_example_nonexistent_file.txt"
