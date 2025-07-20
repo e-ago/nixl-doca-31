@@ -66,5 +66,3 @@ nixl_status_t queryFileInfoList(const std::vector<std::string>& filenames, std::
 
     return NIXL_SUCCESS;
 }
-
-

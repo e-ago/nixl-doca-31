@@ -53,5 +53,3 @@ protected:
     std::string test_file2;
     std::string non_existent_file;
 };
-
-
