@@ -496,19 +496,17 @@ void
 xferBenchUtils::printStatsHeader() {
     if (IS_PAIRWISE_AND_SG() && rt->getSize() > 2) {
         std::cout << std::left << std::setw(20) << "Block Size (B)" << std::setw(15) << "Batch Size"
-                  << std::setw(15) << "Avg Lat. (us)" << std::setw(15) << "B/W (MiB/Sec)"
-                  << std::setw(15) << "B/W (GiB/Sec)" << std::setw(15) << "B/W (GB/Sec)"
+                  << std::setw(15) << "Avg Lat. (us)" << std::setw(15) << "B/W (GB/Sec)"
                   << std::setw(25) << "Aggregate B/W (GB/Sec)" << std::setw(20)
-                  << "Network Util (%)" << std::setw(15) << "Prep avg (us)" << std::setw(15)
-                  << "Post avg (us)" << std::setw(15) << "Post max (us)" << std::setw(15)
-                  << "Tx avg (us)" << std::setw(15) << "Tx max (us)" << std::endl;
+                  << "Network Util (%)" << std::setw(15) << "Avg Prep (us)" << std::setw(15)
+                  << "Avg Post (us)" << std::setw(15) << "P99 Post (us)" << std::setw(15)
+                  << "Avg Tx (us)" << std::setw(15) << "P99 Tx (us)" << std::endl;
     } else {
         std::cout << std::left << std::setw(20) << "Block Size (B)" << std::setw(15) << "Batch Size"
-                  << std::setw(15) << "Avg Lat. (us)" << std::setw(15) << "B/W (MiB/Sec)"
-                  << std::setw(15) << "B/W (GiB/Sec)" << std::setw(15) << "B/W (GB/Sec)"
-                  << std::setw(15) << "Prepare (us)" << std::setw(15) << "Post avg (us)"
-                  << std::setw(15) << "Post max (us)" << std::setw(15) << "Tx avg (us)"
-                  << std::setw(15) << "Tx max (us)" << std::endl;
+                  << std::setw(15) << "Avg Lat. (us)" << std::setw(15) << "B/W (GB/Sec)"
+                  << std::setw(15) << "Avg Prep (us)" << std::setw(15) << "Avg Post (us)"
+                  << std::setw(15) << "P99 Post (us)" << std::setw(15) << "Avg Tx (us)"
+                  << std::setw(15) << "P99 Tx (us)" << std::endl;
     }
     xferBenchConfig::printSeparator('-');
 }
@@ -519,7 +517,7 @@ xferBenchUtils::printStats(bool is_target,
                            size_t batch_size,
                            xferBenchStats stats) {
     size_t total_data_transferred = 0;
-    double avg_latency = 0, throughput = 0, throughput_gib = 0, throughput_gb = 0;
+    double avg_latency = 0, throughput_gb = 0;
     double totalbw = 0;
 
     int num_iter = xferBenchConfig::num_iter;
@@ -545,9 +543,6 @@ xferBenchUtils::printStats(bool is_target,
         avg_latency /= xferBenchConfig::num_initiator_dev; // In microsec
     }
 
-    throughput = (((double) total_data_transferred / (1024 * 1024)) /
-                   (total_duration / 1e6));   // In MiB/Sec
-    throughput_gib = (throughput / 1024);   // In GiB/Sec
     throughput_gb = (((double) total_data_transferred / (1000 * 1000 * 1000)) /
                    (total_duration / 1e6));   // In GB/Sec
 
@@ -563,26 +558,24 @@ xferBenchUtils::printStats(bool is_target,
 
     double prepare_duration = stats.prepare_duration.avg();
     double post_duration = stats.post_duration.avg();
+    double post_p99_duration = stats.post_duration.p99();
     double transfer_duration = stats.transfer_duration.avg();
-    double post_max_duration = stats.post_duration.max();
-    double transfer_max_duration = stats.transfer_duration.max();
+    double transfer_p99_duration = stats.transfer_duration.p99();
 
     // Tabulate print with fixed width for each string
     if (IS_PAIRWISE_AND_SG() && rt->getSize() > 2) {
         std::cout << std::left << std::setw(20) << block_size << std::setw(15) << batch_size
-                  << std::setw(15) << avg_latency << std::setw(15) << throughput << std::setw(15)
-                  << throughput_gib << std::setw(15) << throughput_gb << std::setw(25) << totalbw
+                  << std::setw(15) << avg_latency << std::setw(15) << throughput_gb << std::setw(25) << totalbw
                   << std::setw(20) << (totalbw / (rt->getSize() / 2 * MAXBW)) * 100 << std::setw(15)
                   << prepare_duration << std::setw(15) << post_duration << std::setw(15)
-                  << post_max_duration << std::setw(15) << transfer_duration << std::setw(15)
-                  << transfer_max_duration << std::endl;
+                  << post_p99_duration << std::setw(15) << transfer_duration << std::setw(15)
+                  << transfer_p99_duration << std::endl;
     } else {
         std::cout << std::left << std::setw(20) << block_size << std::setw(15) << batch_size
-                  << std::setw(15) << avg_latency << std::setw(15) << throughput << std::setw(15)
-                  << throughput_gib << std::setw(15) << throughput_gb << std::setw(15)
+                  << std::setw(15) << avg_latency << std::setw(15) << throughput_gb << std::setw(15)
                   << prepare_duration << std::setw(15) << post_duration << std::setw(15)
-                  << post_max_duration << std::setw(15) << transfer_duration << std::setw(15)
-                  << transfer_max_duration << std::endl;
+                  << post_p99_duration << std::setw(15) << transfer_duration << std::setw(15)
+                  << transfer_p99_duration << std::endl;
     }
 }
 
