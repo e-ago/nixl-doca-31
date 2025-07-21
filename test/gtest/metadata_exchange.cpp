@@ -22,20 +22,20 @@
 
 // Used to avoid failures when etcd is not available
 #if HAVE_ETCD
-#define VERIFY_ETCD_MODE() \
-    do { \
-        const char *etcd_endpoints = std::getenv("NIXL_ETCD_ENDPOINTS"); \
-        if (!etcd_endpoints || !*etcd_endpoints) { \
+#define VERIFY_ETCD_MODE()                                                                  \
+    do {                                                                                    \
+        const char *etcd_endpoints = std::getenv("NIXL_ETCD_ENDPOINTS");                    \
+        if (!etcd_endpoints || !*etcd_endpoints) {                                          \
             GTEST_SKIP() << "NIXL_ETCD_ENDPOINTS is empty or not set, skipping etcd tests"; \
-            return; \
-        } \
-    } while(0)
+            return;                                                                         \
+        }                                                                                   \
+    } while (0)
 #else
-#define VERIFY_ETCD_MODE() \
-    do { \
+#define VERIFY_ETCD_MODE()                                                         \
+    do {                                                                           \
         GTEST_SKIP() << "NIXL compiled without etcd support, skipping etcd tests"; \
-        return; \
-    } while(0)
+        return;                                                                    \
+    } while (0)
 #endif
 
 namespace gtest {
@@ -170,8 +170,7 @@ protected:
     std::vector<AgentContext> agents_;
 };
 
-TEST_F(MetadataExchangeTestFixture, GetLocalAndLoadRemote)
-{
+TEST_F(MetadataExchangeTestFixture, GetLocalAndLoadRemote) {
     initAgentsDefault();
 
     nixl_xfer_dlist_t dlist(DRAM_SEG);
@@ -201,8 +200,7 @@ TEST_F(MetadataExchangeTestFixture, GetLocalAndLoadRemote)
     ASSERT_NE(dst.agent->invalidateRemoteMD(src.name), NIXL_SUCCESS);
 }
 
-TEST_F(MetadataExchangeTestFixture, LoadRemoteWithErrors)
-{
+TEST_F(MetadataExchangeTestFixture, LoadRemoteWithErrors) {
     auto &src = agents_[0];
     auto &dst = agents_[1];
 
@@ -227,8 +225,7 @@ TEST_F(MetadataExchangeTestFixture, LoadRemoteWithErrors)
     ASSERT_NE(dst.agent->invalidateRemoteMD(src.name), NIXL_SUCCESS);
 }
 
-TEST_F(MetadataExchangeTestFixture, GetLocalPartialAndLoadRemote)
-{
+TEST_F(MetadataExchangeTestFixture, GetLocalPartialAndLoadRemote) {
     initAgentsDefault();
 
     auto &src = agents_[0];
@@ -295,8 +292,7 @@ TEST_F(MetadataExchangeTestFixture, GetLocalPartialAndLoadRemote)
     ASSERT_EQ(dst.agent->invalidateRemoteMD(src.name), NIXL_SUCCESS);
 }
 
-TEST_F(MetadataExchangeTestFixture, GetLocalPartialWithErrors)
-{
+TEST_F(MetadataExchangeTestFixture, GetLocalPartialWithErrors) {
     auto &src = agents_[0];
     auto &dst = agents_[1];
 
@@ -346,8 +342,7 @@ TEST_F(MetadataExchangeTestFixture, GetLocalPartialWithErrors)
     ASSERT_NE(dst.agent->loadRemoteMD(md, remote_name), NIXL_SUCCESS);
 }
 
-TEST_F(MetadataExchangeTestFixture, SocketSendLocalAndInvalidateLocal)
-{
+TEST_F(MetadataExchangeTestFixture, SocketSendLocalAndInvalidateLocal) {
     initAgentsDefault();
 
     auto &src = agents_[0];
@@ -378,8 +373,7 @@ TEST_F(MetadataExchangeTestFixture, SocketSendLocalAndInvalidateLocal)
     ASSERT_EQ(dst.agent->checkRemoteMD(src.name, {DRAM_SEG}), NIXL_ERR_NOT_FOUND);
 }
 
-TEST_F(MetadataExchangeTestFixture, SocketFetchRemoteAndInvalidateLocal)
-{
+TEST_F(MetadataExchangeTestFixture, SocketFetchRemoteAndInvalidateLocal) {
     initAgentsDefault();
 
     auto &src = agents_[0];
@@ -405,8 +399,7 @@ TEST_F(MetadataExchangeTestFixture, SocketFetchRemoteAndInvalidateLocal)
     ASSERT_NE(dst.agent->checkRemoteMD(src.name, {DRAM_SEG}), NIXL_SUCCESS);
 }
 
-TEST_F(MetadataExchangeTestFixture, SocketSendPartialLocal)
-{
+TEST_F(MetadataExchangeTestFixture, SocketSendPartialLocal) {
     initAgentsDefault();
 
     auto &src = agents_[0];
@@ -462,8 +455,7 @@ TEST_F(MetadataExchangeTestFixture, SocketSendPartialLocal)
     ASSERT_EQ(dst.agent->checkRemoteMD(src.name, invalid_descs.trim()), NIXL_ERR_NOT_FOUND);
 }
 
-TEST_F(MetadataExchangeTestFixture, SocketSendLocalPartialWithErrors)
-{
+TEST_F(MetadataExchangeTestFixture, SocketSendLocalPartialWithErrors) {
     auto &src = agents_[0];
     auto &dst = agents_[1];
 
@@ -493,8 +485,7 @@ TEST_F(MetadataExchangeTestFixture, SocketSendLocalPartialWithErrors)
     ASSERT_NE(dst.agent->checkRemoteMD(src.name, {DRAM_SEG}), NIXL_SUCCESS);
 }
 
-TEST_F(MetadataExchangeTestFixture, LocalNonLocalMDExchange)
-{
+TEST_F(MetadataExchangeTestFixture, LocalNonLocalMDExchange) {
     auto &src = agents_[0];
     auto &dst = agents_[1];
 
@@ -523,8 +514,7 @@ TEST_F(MetadataExchangeTestFixture, LocalNonLocalMDExchange)
     ASSERT_EQ("agent_0", remote_name);
 }
 
-TEST_F(MetadataExchangeTestFixture, EtcdSendLocalAndFetchRemote)
-{
+TEST_F(MetadataExchangeTestFixture, EtcdSendLocalAndFetchRemote) {
     VERIFY_ETCD_MODE();
     initAgentsDefault();
 
@@ -554,8 +544,7 @@ TEST_F(MetadataExchangeTestFixture, EtcdSendLocalAndFetchRemote)
     std::this_thread::sleep_for(sleep_time);
 }
 
-TEST_F(MetadataExchangeTestFixture, EtcdSendLocalPartialAndFetchRemote)
-{
+TEST_F(MetadataExchangeTestFixture, EtcdSendLocalPartialAndFetchRemote) {
     VERIFY_ETCD_MODE();
     initAgentsDefault();
 
@@ -644,8 +633,7 @@ TEST_F(MetadataExchangeTestFixture, EtcdSendLocalPartialAndFetchRemote)
     ASSERT_EQ(dst.agent->checkRemoteMD(src.name, valid_descs.trim()), NIXL_ERR_NOT_FOUND);
 }
 
-TEST_F(MetadataExchangeTestFixture, EtcdSendLocalPartialAndFetchRemoteWithErrors)
-{
+TEST_F(MetadataExchangeTestFixture, EtcdSendLocalPartialAndFetchRemoteWithErrors) {
     VERIFY_ETCD_MODE();
 
     auto &src = agents_[0];
