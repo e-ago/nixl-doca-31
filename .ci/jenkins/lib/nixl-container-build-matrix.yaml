@@ -79,8 +79,7 @@ steps:
           ARTIFACTORY_REPO_PATH="${ARTIFACTORY_BASE_REPO}/verification/nixl"
           BUILD_SCRIPT="contrib/build-container.sh"
           BUILD_ARGS="--dockerfile contrib/Dockerfile"
-          # Extract UCX version from build script
-          CLEAN_UCX=$(grep "^UCX_REF=" contrib/build-container.sh | cut -d'=' -f2)
+          CLEAN_UCX="${UCX_VERSION}"
           ;;
       esac
 
@@ -116,6 +115,7 @@ steps:
     containerSelector: "{ name: 'podman.*' }"
     run: |
       source "${WORKSPACE}/build.env"
+      export UCX_REF="${UCX_VERSION}"  # Only affects nixl build
 
       # Build container using script and arguments from build.env
       "${BUILD_SCRIPT}" \

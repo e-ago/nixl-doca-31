@@ -261,9 +261,7 @@
       - string:
           name: "UCX_VERSION"
           default: "v1.19.x"
-          description: >
-            UCX version to use (tag like v1.19.0, branch name, or commit hash).<br/>
-            <b>Note:</b> Only applies to <b>nixlbench</b> target. <b>nixl</b> target uses the version from its build script.
+          description: "UCX version to use (tag like v1.19.0, branch name, or commit hash)"
       - string:
           name: "BASE_IMAGE"
           default: "nvcr.io/nvidia/cuda-dl-base"
