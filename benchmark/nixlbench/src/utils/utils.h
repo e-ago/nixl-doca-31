@@ -186,6 +186,8 @@ public:
     void
     add(const xferMetricStats &other);
     void
+    reserve(size_t n);
+    void
     reset();
 
 private:
@@ -204,6 +206,8 @@ public:
     reset();
     void
     add(const xferBenchStats &other);
+    void
+    reserve(size_t n);
 };
 
 // Generic IOV descriptor class independent of NIXL

@@ -741,6 +741,7 @@ execTransfer(nixlAgent *agent,
 #pragma omp parallel num_threads(num_threads)
     {
         xferBenchStats thread_stats;
+        thread_stats.reserve(num_iter);
         xferBenchTimer timer;
         const int tid = omp_get_thread_num();
         const auto &local_iov = local_iovs[tid];
@@ -807,7 +808,10 @@ execTransfer(nixlAgent *agent,
             std::cout << "NIXL releaseXferReq failed" << std::endl;
             ret = -1;
         }
-        stats.add(thread_stats);
+        #pragma omp critical
+        {
+            stats.add(thread_stats);
+        }
     }
     long long total_duration = total_timer.lap();
     stats.total_duration.add(total_duration);

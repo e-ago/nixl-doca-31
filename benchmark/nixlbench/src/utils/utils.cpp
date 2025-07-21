@@ -643,6 +643,11 @@ xferMetricStats::add(const xferMetricStats &other) {
 }
 
 void
+xferMetricStats::reserve(size_t n) {
+    samples.reserve(n);
+}
+
+void
 xferMetricStats::reset() {
     samples.clear();
 }
@@ -665,6 +670,14 @@ xferBenchStats::add(const xferBenchStats &other) {
     prepare_duration.add(other.prepare_duration);
     post_duration.add(other.post_duration);
     transfer_duration.add(other.transfer_duration);
+}
+
+void
+xferBenchStats::reserve(size_t n) {
+    total_duration.reserve(n);
+    prepare_duration.reserve(n);
+    post_duration.reserve(n);
+    transfer_duration.reserve(n);
 }
 
 /*
