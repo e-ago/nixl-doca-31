@@ -20,6 +20,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cassert>
+#include <cstdint>
 #include <stack>
 #include <optional>
 
