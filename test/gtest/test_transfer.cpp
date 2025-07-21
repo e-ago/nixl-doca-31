@@ -102,9 +102,9 @@ protected:
                                100000);
     }
 
-    static int getPort(int i)
+    uint16_t getPort(int i) const
     {
-        return 9000 + i;
+        return ports.at(i);
     }
 
     nixl_b_params_t getBackendParams()
@@ -126,6 +126,7 @@ protected:
 
         // Create two agents
         for (size_t i = 0; i < 2; i++) {
+            ports.push_back(get_available_tcp_port());
             agents.emplace_back(std::make_unique<nixlAgent>(getAgentName(i),
                                                             getConfig(getPort(i))));
             nixlBackendH *backend_handle = nullptr;
@@ -146,7 +147,7 @@ protected:
         return GetParam();
     }
 
-    static nixl_opt_args_t extra_params_ip(int remote)
+    nixl_opt_args_t extra_params_ip(int remote)
     {
         nixl_opt_args_t extra_params;
 
@@ -417,6 +418,7 @@ private:
     static constexpr std::chrono::milliseconds retry_timeout{1};
 
     std::vector<std::unique_ptr<nixlAgent>> agents;
+    std::vector<uint16_t> ports;
 };
 
 const std::string TestTransfer::NOTIF_MSG = "notification";

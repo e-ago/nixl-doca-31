@@ -22,22 +22,6 @@
 
 namespace gtest {
 namespace metadata_exchange {
-
-namespace {
-
-int getRandomPort()
-{
-    static constexpr int min_port = 10000;
-    static constexpr int max_port = 65535;
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<int> distr(min_port, max_port);
-
-    return distr(gen);
-}
-
-}; // unnamed namespace
-
 class MemBuffer {
 public:
     MemBuffer(size_t size) :
@@ -118,11 +102,9 @@ protected:
 
     void SetUp() override
     {
-        int port_base = getRandomPort();
-
         // Create two agents
         for (int i = 0; i < AGENT_COUNT_; i++) {
-            int port = port_base + i;
+            int port = get_available_tcp_port();
             std::string name = "agent_" + std::to_string(i);
             nixlAgentConfig cfg(false, true, port, nixl_thread_sync_t::NIXL_THREAD_SYNC_STRICT);
 
