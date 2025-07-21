@@ -63,8 +63,8 @@ private:
     std::stack<Variable> m_vars;
 };
 
-
-uint16_t get_available_tcp_port();
+uint16_t
+get_available_tcp_port();
 
 } // namespace gtest
 

@@ -76,7 +76,8 @@ ScopedEnv::Variable::~Variable()
     }
 }
 
-uint16_t get_available_tcp_port() {
+uint16_t
+get_available_tcp_port() {
     int sock_fd, ret;
     struct sockaddr_in addr_in, ret_addr;
     socklen_t len = sizeof(ret_addr);
@@ -88,18 +89,17 @@ uint16_t get_available_tcp_port() {
     }
 
     memset(&addr_in, 0, sizeof(struct sockaddr_in));
-    addr_in.sin_family      = AF_INET;
+    addr_in.sin_family = AF_INET;
     addr_in.sin_addr.s_addr = INADDR_ANY;
 
     do {
-        addr_in.sin_port        = htons(0);
+        addr_in.sin_port = htons(0);
         /* Ports below 1024 are considered "privileged" (can be used only by
          * user root). Ports above and including 1024 can be used by anyone */
-        ret = bind(sock_fd, (struct sockaddr*)&addr_in,
-                   sizeof(struct sockaddr_in));
+        ret = bind(sock_fd, (struct sockaddr *)&addr_in, sizeof(struct sockaddr_in));
     } while (ret);
 
-    ret = getsockname(sock_fd, (struct sockaddr*)&ret_addr, &len);
+    ret = getsockname(sock_fd, (struct sockaddr *)&ret_addr, &len);
 
     port = ntohs(ret_addr.sin_port);
     close(sock_fd);
