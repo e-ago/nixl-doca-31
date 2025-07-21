@@ -109,8 +109,8 @@ curl -fSsL "https://github.com/openucx/ucx/tarball/${UCX_VERSION}" | tar xz
   mkdir build && cd build && \
   cmake .. && \
   make -j$(nproc) && \
-  make install && \
-  ldconfig \
+  $SUDO make install && \
+  $SUDO ldconfig \
 )
 
 export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/cuda/lib64
