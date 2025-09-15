@@ -393,6 +393,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
             gpu, (void *)notif->send_addr, notif->elems_num, notif->elems_size, pd);
     }
     catch (const std::exception &e) {
+        NIXL_ERROR << e.what();
         goto error;
     }
 
@@ -408,6 +409,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
             gpu, (void *)notif->recv_addr, notif->elems_num, notif->elems_size, pd);
     }
     catch (const std::exception &e) {
+        NIXL_ERROR << e.what();
         goto error;
     }
 
@@ -534,14 +536,20 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
 
     rdma_qp = new struct nixlDocaRdmaQp;
 
-    rdma_qp->qp_data =
-        std::make_unique<nixl::doca::verbs::qp>(gdevs[0].second,
-                                                ddev,
-                                                verbs_context,
-                                                verbs_pd,
-                                                RDMA_RECV_QUEUE_SIZE,
-                                                RDMA_SEND_QUEUE_SIZE,
-                                                DOCA_GPUNETIO_VERBS_NIC_HANDLER_GPU_SM_DB);
+    try {
+        rdma_qp->qp_data =
+            std::make_unique<nixl::doca::verbs::qp>(gdevs[0].second,
+                                                    ddev,
+                                                    verbs_context,
+                                                    verbs_pd,
+                                                    RDMA_RECV_QUEUE_SIZE,
+                                                    RDMA_SEND_QUEUE_SIZE,
+                                                    DOCA_GPUNETIO_VERBS_NIC_HANDLER_GPU_SM_DB);
+    }
+    catch (const std::exception &e) {
+        NIXL_ERROR << e.what();
+        goto error;
+    }
 
     NIXL_INFO << "doca_gpu_verbs_get_qp_dev qp_data for " << remote_agent << std::endl;
 
@@ -552,14 +560,20 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
     NIXL_INFO << "doca_gpu_verbs_create_qp_hl qp_notif for " << remote_agent << std::endl;
 
     /* NOTIF QP */
-    rdma_qp->qp_notif =
-        std::make_unique<nixl::doca::verbs::qp>(gdevs[0].second,
-                                                ddev,
-                                                verbs_context,
-                                                verbs_pd,
-                                                RDMA_RECV_QUEUE_SIZE,
-                                                RDMA_SEND_QUEUE_SIZE,
-                                                DOCA_GPUNETIO_VERBS_NIC_HANDLER_GPU_SM_DB);
+    try {
+        rdma_qp->qp_notif =
+            std::make_unique<nixl::doca::verbs::qp>(gdevs[0].second,
+                                                    ddev,
+                                                    verbs_context,
+                                                    verbs_pd,
+                                                    RDMA_RECV_QUEUE_SIZE,
+                                                    RDMA_SEND_QUEUE_SIZE,
+                                                    DOCA_GPUNETIO_VERBS_NIC_HANDLER_GPU_SM_DB);
+    }
+    catch (const std::exception &e) {
+        NIXL_ERROR << e.what();
+        goto error;
+    }
 
     NIXL_INFO << "doca_gpu_verbs_get_qp_dev qp_notif for " << remote_agent << std::endl;
 
@@ -899,6 +913,7 @@ nixlDocaEngine::registerMem(const nixlBlobDesc &mem,
             it->second, (void *)mem.addr, 1, (size_t)mem.len, pd);
     }
     catch (const std::exception &e) {
+        NIXL_ERROR << e.what();
         return NIXL_ERR_BACKEND;
     }
 
@@ -967,6 +982,7 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
         md->mr = std::make_unique<nixl::doca::verbs::mr>((void *)addr, tot_size, rkey);
     }
     catch (const std::exception &e) {
+        NIXL_ERROR << e.what();
         goto error;
     }
 
@@ -975,7 +991,6 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
     return NIXL_SUCCESS;
 
 error:
-
     return NIXL_ERR_BACKEND;
 }
 
