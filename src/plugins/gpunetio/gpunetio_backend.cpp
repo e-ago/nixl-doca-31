@@ -421,7 +421,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
     ((volatile struct docaNotif *)notif_fill_cpu)->msg_buf = (uintptr_t)notif->recv_addr;
     ((volatile struct docaNotif *)notif_fill_cpu)->msg_lkey = notif->recv_mr->get_lkey();
     ((volatile struct docaNotif *)notif_fill_cpu)->msg_size = notif->elems_size;
-    std::atomic_thread_fence(std::memory_order_release);
+    asm volatile("mfence" : : : "memory");
     ((volatile struct docaNotif *)notif_fill_cpu)->qp_gpu =
         qpMap[remote_agent]->qp_notif->get_qp_gpu_dev();
     while (((volatile struct docaNotif *)notif_fill_cpu)->qp_gpu != nullptr)
@@ -542,8 +542,8 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
                                                     ddev,
                                                     verbs_context,
                                                     verbs_pd,
-                                                    RDMA_RECV_QUEUE_SIZE,
                                                     RDMA_SEND_QUEUE_SIZE,
+                                                    RDMA_RECV_QUEUE_SIZE,
                                                     DOCA_GPUNETIO_VERBS_NIC_HANDLER_GPU_SM_DB);
     }
     catch (const std::exception &e) {
@@ -551,13 +551,9 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
         goto error;
     }
 
-    NIXL_INFO << "doca_gpu_verbs_get_qp_dev qp_data for " << remote_agent << std::endl;
-
     rdma_qp->qpn_data = doca_verbs_qp_get_qpn(rdma_qp->qp_data->get_qp());
 
     NIXL_INFO << "doca_gpu_verbs_get_qp_dev rdma_qp->qpn_data " << rdma_qp->qpn_data << std::endl;
-
-    NIXL_INFO << "doca_gpu_verbs_create_qp_hl qp_notif for " << remote_agent << std::endl;
 
     /* NOTIF QP */
     try {
@@ -566,16 +562,14 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
                                                     ddev,
                                                     verbs_context,
                                                     verbs_pd,
-                                                    RDMA_RECV_QUEUE_SIZE,
                                                     RDMA_SEND_QUEUE_SIZE,
+                                                    RDMA_RECV_QUEUE_SIZE,
                                                     DOCA_GPUNETIO_VERBS_NIC_HANDLER_GPU_SM_DB);
     }
     catch (const std::exception &e) {
         NIXL_ERROR << e.what();
         goto error;
     }
-
-    NIXL_INFO << "doca_gpu_verbs_get_qp_dev qp_notif for " << remote_agent << std::endl;
 
     rdma_qp->qpn_notif = doca_verbs_qp_get_qpn(rdma_qp->qp_notif->get_qp());
 
@@ -586,6 +580,9 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
     NIXL_INFO << "DOCA addRdmaQp new QP added for " << remote_agent;
 
     return NIXL_SUCCESS;
+
+error:
+    return NIXL_ERR_BACKEND;
 }
 
 nixl_status_t
@@ -1197,18 +1194,18 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
     for (auto &notif : notifMap) {
         ((volatile struct docaNotif *)notif_progress_cpu)->qp_gpu =
             qpMap[notif.first]->qp_notif->get_qp_gpu_dev();
-        std::atomic_thread_fence(std::memory_order_release);
+        asm volatile("mfence" : : : "memory");
         while (((volatile struct docaNotif *)notif_progress_cpu)->qp_gpu != nullptr)
             ;
         num_msg = ((volatile struct docaNotif *)notif_progress_cpu)->msg_num;
         while (num_msg > 0) {
             recv_idx = notif.second->recv_pi.load() & (DOCA_MAX_NOTIF_INFLIGHT - 1);
             addr = (char *)(notif.second->recv_addr + (recv_idx * notif.second->elems_size));
-
-            NIXL_INFO << "CPU num_msg " << num_msg << " at " << recv_idx << " addr " << addr
-                      << std::endl;
-
             msg_src = addr;
+
+            NIXL_INFO << "CPU num_msg " << num_msg << " at " << recv_idx << " addr " << (void *)addr
+                      << " msg " << msg_src << std::endl;
+
             position = msg_src.find(msg_tag_start);
 
             NIXL_INFO << "getNotifs idx " << recv_idx << " addr "
@@ -1233,7 +1230,8 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
                 recv_idx = notif.second->recv_pi.fetch_add(1);
                 num_msg--;
             } else {
-                NIXL_ERROR << "getNotifs error message at " << num_msg;
+                NIXL_ERROR << "getNotifs error message at " << num_msg << " size " << msg_src.size()
+                           << " msg " << msg_src;
                 break;
             }
         }
@@ -1245,7 +1243,6 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
 nixl_status_t
 nixlDocaEngine::genNotif(const std::string &remote_agent, const std::string &msg) const {
     struct nixlDocaNotif *notif;
-    doca_gpu_dev_verbs_qp *qp_gpu;
     uint32_t buf_idx;
     uintptr_t msg_buf;
 
@@ -1271,22 +1268,22 @@ nixlDocaEngine::genNotif(const std::string &remote_agent, const std::string &msg
         return NIXL_ERR_INVALID_PARAM;
     }
 
-    qp_gpu = searchQp->second->qp_notif->get_qp_gpu_dev();
     std::string newMsg = msg_tag_start + std::to_string((int)msg.size()) + msg_tag_end + msg;
     buf_idx = (notif->send_pi.fetch_add(1) & (notif->elems_num - 1));
     msg_buf = (uintptr_t)notif->send_addr + (buf_idx * notif->elems_size);
     memcpy((void *)msg_buf, newMsg.c_str(), newMsg.size());
 
     NIXL_INFO << "genNotif to " << remote_agent << " msg size " << std::to_string((int)msg.size())
-              << " msg " << newMsg << " at " << buf_idx;
+              << " msg " << newMsg << " at " << buf_idx << " msg_buf " << msg_buf << "\n";
 
     std::lock_guard<std::mutex> lock(notifSendLock);
     ((volatile struct docaNotif *)notif_send_cpu)->msg_buf = msg_buf;
     ((volatile struct docaNotif *)notif_send_cpu)->msg_lkey = notif->send_mr->get_lkey();
     ((volatile struct docaNotif *)notif_send_cpu)->msg_size = newMsg.size();
     // membar
-    std::atomic_thread_fence(std::memory_order_release);
-    ((volatile struct docaNotif *)notif_send_cpu)->qp_gpu = qp_gpu;
+    asm volatile("mfence" : : : "memory");
+    ((volatile struct docaNotif *)notif_send_cpu)->qp_gpu =
+        searchQp->second->qp_notif->get_qp_gpu_dev();
     while (((volatile struct docaNotif *)notif_send_cpu)->qp_gpu != nullptr)
         ;
 

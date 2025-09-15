@@ -48,7 +48,7 @@ nixl_gpunetio_dev_priv_poll_one_cq_at(doca_gpu_dev_verbs_cq *cq, uint64_t cons_i
     observed_completion = observed_completion && (opcode != MLX5_CQE_INVALID);
     if (!observed_completion) return EBUSY;
 
-    return (opcode == MLX5_CQE_REQ_ERR) * -EIO;
+    return (opcode == MLX5_CQE_REQ_ERR || opcode == MLX5_CQE_RESP_ERR) * -EIO;
 }
 
 /**
@@ -81,7 +81,7 @@ kernel_read(doca_gpu_dev_verbs_qp *qp, struct docaXferReqGpu *xferReqRing, uint3
     doca_gpu_dev_verbs_wqe *wqe_ptr;
     enum doca_gpu_dev_verbs_wqe_ctrl_flags cflag = DOCA_GPUNETIO_MLX5_WQE_CTRL_CQ_ERROR_UPDATE;
     uint32_t tot_wqe, idx = 0;
-    __shared__ uint32_t base_wqe_idx;
+    __shared__ uint64_t base_wqe_idx;
 
     // Warmup
     if (xferReqRing == nullptr) return;
@@ -276,8 +276,6 @@ kernel_progress(struct docaXferCompletion *completion_list,
 
                     DOCA_GPUNETIO_VOLATILE(notif_progress->msg_num) = 1;
                     DOCA_GPUNETIO_VOLATILE(notif_progress->msg_last) = (msg_last + 1);
-                    // (notif_progress->msg_last + 1) %
-                    // doca_gpu_dev_verbs_qp_get_cq_rq(notif_progress->qp_gpu)->cqe_mask;
 
                     doca_gpu_dev_verbs_submit<DOCA_GPUNETIO_VERBS_RESOURCE_SHARING_MODE_GPU,
                                               DOCA_GPUNETIO_VERBS_SYNC_SCOPE_GPU,
@@ -287,7 +285,7 @@ kernel_progress(struct docaXferCompletion *completion_list,
                         notif_progress->qp_gpu->rq_wqe_pi + 1);
 
 #if ENABLE_DEBUG == 1
-                    printf("kernel flush recv notification pi %ld last %ld\n",
+                    printf("kernel flush recv notification pi %ld last %d\n",
                            notif_progress->qp_gpu->rq_wqe_pi + 1,
                            notif_progress->msg_last);
 #endif
@@ -340,7 +338,12 @@ kernel_progress(struct docaXferCompletion *completion_list,
 
                 doca_gpu_dev_verbs_wait(notif_send_gpu->qp_gpu, &out_ticket);
 #if ENABLE_DEBUG == 1
-                printf("Notif correctly sent %d\n", out_ticket);
+                printf("Notif correctly sent %ld addr %lx msg_lkey %x qp %p size %d\n",
+                       out_ticket,
+                       notif_send_gpu->msg_buf,
+                       notif_send_gpu->msg_lkey,
+                       (void *)notif_send_gpu->qp_gpu,
+                       (int)notif_send_gpu->msg_size);
 #endif
                 DOCA_GPUNETIO_VOLATILE(notif_send_gpu->qp_gpu) = nullptr;
             }

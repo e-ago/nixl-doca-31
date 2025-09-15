@@ -119,7 +119,7 @@ struct docaNotif {
     doca_gpu_dev_verbs_qp *qp_gpu;
     uint32_t msg_lkey;
     uintptr_t msg_buf;
-    uint32_t msg_size;
+    size_t msg_size;
     uint32_t msg_num;
     uint32_t msg_last;
 };
