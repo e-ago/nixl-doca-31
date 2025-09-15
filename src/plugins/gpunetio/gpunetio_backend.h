@@ -27,8 +27,7 @@ public:
     std::mutex notifLock;
     std::mutex qpLock;
     mutable std::mutex connectLock;
-    std::vector<std::pair<uint32_t, doca_gpu *>>
-        gdevs; /* List of DOCA GPUNetIO device handlers */
+    std::vector<std::pair<uint32_t, doca_gpu *>> gdevs; /* List of DOCA GPUNetIO device handlers */
     doca_dev *ddev; /* DOCA device handler associated to queues */
     doca_verbs_context *verbs_context; /* DOCA Verbs Context */
     doca_verbs_pd *verbs_pd; /* DOCA Verbs Protection Domain */
@@ -55,14 +54,17 @@ public:
     supportsRemote() const {
         return true;
     }
+
     bool
     supportsLocal() const {
         return false;
     }
+
     bool
     supportsNotif() const {
         return true;
     }
+
     bool
     supportsProgTh() const {
         return false;

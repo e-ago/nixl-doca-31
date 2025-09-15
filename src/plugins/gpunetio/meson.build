@@ -1,17 +1,17 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
+#SPDX - FileCopyrightText : Copyright(c) 2025 NVIDIA CORPORATION &AFFILIATES.All rights reserved.
+#SPDX - License - Identifier : Apache - 2.0
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+#Licensed under the Apache License, Version 2.0(the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+#http: // www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 
 plugin_gpunetio_deps = [dependency('libibverbs'), dependency('libmlx5'), dependency('doca-common'), dependency('doca-verbs'), dependency('doca-gpunetio')]
 
@@ -23,7 +23,7 @@ compile_flags += '-D DOCA_ALLOW_EXPERIMENTAL_API'
 
 if 'GPUNETIO' in static_plugins
     gpunetio_backend_lib = static_library('GPUNETIO',
-               'gpunetio_backend.cpp', 'gpunetio_backend.h', 'gpunetio_backend_aux.h', 'gpunetio_plugin.cpp', 'gpunetio_utils.cpp', 'gpunetio_highlevel.cpp', 'gpunetio_kernels.cu',
+               'gpunetio_backend.cpp', 'gpunetio_backend.h', 'gpunetio_backend_aux.h', 'gpunetio_plugin.cpp', 'gpunetio_utils.cpp', 'gpunetio_kernels.cu',
                dependencies: [nixl_infra, serdes_interface, cuda_dep, plugin_gpunetio_deps, absl_log_dep],
                include_directories: [nixl_inc_dirs, utils_inc_dirs],
                install: true,
@@ -33,7 +33,7 @@ if 'GPUNETIO' in static_plugins
                install_dir: plugin_install_dir)  # Custom prefix for plugin libraries
 else
     gpunetio_backend_lib = shared_library('GPUNETIO',
-               'gpunetio_backend.cpp', 'gpunetio_backend.h', 'gpunetio_backend_aux.h', 'gpunetio_plugin.cpp', 'gpunetio_utils.cpp', 'gpunetio_highlevel.cpp', 'gpunetio_kernels.cu',
+               'verbs/verbs.cpp', 'gpunetio_backend.cpp', 'gpunetio_backend.h', 'gpunetio_backend_aux.h', 'gpunetio_plugin.cpp', 'gpunetio_utils.cpp', 'gpunetio_kernels.cu',
                dependencies: [nixl_infra, serdes_interface, cuda_dep, plugin_gpunetio_deps, absl_log_dep],
                include_directories: [nixl_inc_dirs, utils_inc_dirs],
                install: true,

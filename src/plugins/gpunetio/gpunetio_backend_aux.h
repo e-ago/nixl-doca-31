@@ -42,6 +42,7 @@
 #include <doca_gpunetio.h>
 #include <doca_gpunetio_verbs_def.h>
 
+#include "verbs/verbs.h"
 #include "backend/backend_engine.h"
 #include "common/str_tools.h"
 #include "nixl.h"
@@ -73,66 +74,6 @@ constexpr uint32_t DOCA_NOTIF_NULL = 0xFFFFFFFF;
 #define ACCESS_ONCE(x) (*(volatile uint8_t *)&(x))
 #endif
 
-/* High-level API */
-struct doca_gpu_verbs_qp_init_attr_hl {
-    doca_gpu *gpu_dev;
-    doca_dev *dev;
-    doca_verbs_context *verbs_context;
-    doca_verbs_pd *verbs_pd;
-    uint16_t sq_nwqe;
-    uint16_t rq_nwqe;
-    doca_gpu_dev_verbs_nic_handler nic_handler;
-};
-
-struct doca_gpu_verbs_qp_hl {
-    doca_gpu *gpu_dev; /* DOCA GPU device to use */
-
-    // CQ
-    doca_verbs_cq *cq_rq;
-    doca_verbs_cq *cq_sq;
-    void *cq_sq_umem_gpu_ptr;
-    void *cq_rq_umem_gpu_ptr;
-    doca_umem *cq_sq_umem;
-    doca_umem *cq_rq_umem;
-    void *cq_sq_umem_dbr_gpu_ptr;
-    void *cq_rq_umem_dbr_gpu_ptr;
-    doca_umem *cq_sq_umem_dbr;
-    doca_umem *cq_rq_umem_dbr;
-
-    // QP
-    doca_verbs_qp *qp;
-    void *qp_umem_gpu_ptr;
-    doca_umem *qp_umem;
-    void *qp_umem_dbr_gpu_ptr;
-    doca_umem *qp_umem_dbr;
-    doca_uar *external_uar;
-
-    doca_gpu_dev_verbs_nic_handler nic_handler;
-
-    // QP GPUNetIO Object
-    doca_gpu_verbs_qp *qp_gverbs;
-};
-
-struct nixlDocaMr {
-    nixlDocaMr(doca_gpu *gpu_dev, void *addr_, uint32_t elem_num_, size_t elem_size_, struct ibv_pd *pd_);
-
-    nixlDocaMr(void *addr_, size_t tot_size_, uint32_t rkey_);
-
-    ~nixlDocaMr();
-
-    doca_gpu *gpu_dev;
-    void *addr;
-    uint32_t elem_num;
-    size_t elem_size;
-    size_t tot_size;
-    struct ibv_pd *pd;
-    struct ibv_mr *mr;
-    uint32_t lkey;
-    uint32_t rkey;
-    bool remote;
-    int dmabuf_fd;
-};
-
 struct docaXferReqGpu {
     uint32_t id;
     uintptr_t lbuf[DOCA_XFER_REQ_SIZE];
@@ -163,10 +104,10 @@ struct nixlDocaNotif {
     uint32_t elems_size;
     uint8_t *send_addr;
     std::atomic<uint32_t> send_pi;
-    struct nixlDocaMr *send_mr;
+    std::unique_ptr<nixl::doca::verbs::mr> send_mr;
     uint8_t *recv_addr;
     std::atomic<uint32_t> recv_pi;
-    struct nixlDocaMr *recv_mr;
+    std::unique_ptr<nixl::doca::verbs::mr> recv_mr;
 };
 
 struct docaXferCompletion {
@@ -195,7 +136,7 @@ public:
 // A private metadata has to implement get, and has all the metadata
 class nixlDocaPrivateMetadata : public nixlBackendMD {
 private:
-    struct nixlDocaMr *mr;
+    std::unique_ptr<nixl::doca::verbs::mr> mr;
     uint32_t devId;
     nixl_blob_t remoteMrStr;
 
@@ -216,7 +157,7 @@ public:
 class nixlDocaPublicMetadata : public nixlBackendMD {
 
 public:
-    struct nixlDocaMr *mr;
+    std::unique_ptr<nixl::doca::verbs::mr> mr;
     nixlDocaConnection conn;
 
     nixlDocaPublicMetadata() : nixlBackendMD(false) {}
@@ -225,14 +166,16 @@ public:
 };
 
 struct nixlDocaRdmaQp {
-    doca_gpu_verbs_qp_hl *qp_data_hl;
-    doca_gpu_dev_verbs_qp *qp_data_gpu;
+    std::unique_ptr<nixl::doca::verbs::qp> qp_data;
+    // doca_gpu_verbs_qp_hl *qp_data_hl;
+    // doca_gpu_dev_verbs_qp *qp_data_gpu;
     uint32_t qpn_data;
     uint32_t rqpn_data;
     uint32_t remote_gid_data;
 
-    doca_gpu_verbs_qp_hl *qp_notif_hl;
-    doca_gpu_dev_verbs_qp *qp_notif_gpu;
+    std::unique_ptr<nixl::doca::verbs::qp> qp_notif;
+    // doca_gpu_verbs_qp_hl *qp_notif_hl;
+    // doca_gpu_dev_verbs_qp *qp_notif_gpu;
     uint32_t qpn_notif;
     uint32_t rqpn_notif;
     uint32_t remote_gid_notif;
@@ -262,11 +205,11 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
 void *
 threadProgressFunc(void *arg);
 
-doca_error_t
-doca_gpu_verbs_destroy_qp_hl(doca_gpu_verbs_qp_hl *qp);
-doca_error_t
-doca_gpu_verbs_create_qp_hl(doca_gpu_verbs_qp_init_attr_hl *qp_init_attr,
-                            doca_gpu_verbs_qp_hl **qp);
+// doca_error_t
+// doca_gpu_verbs_destroy_qp_hl(doca_gpu_verbs_qp_hl *qp);
+// doca_error_t
+// doca_gpu_verbs_create_qp_hl(doca_gpu_verbs_qp_init_attr_hl *qp_init_attr,
+//                             doca_gpu_verbs_qp_hl **qp);
 doca_error_t
 doca_kernel_write(cudaStream_t stream,
                   doca_gpu_dev_verbs_qp *qp_gpu,

@@ -30,7 +30,7 @@
 #define VERBS_TEST_MAX_RECEIVE_SEGS (1)
 #define VERBS_TEST_DBR_SIZE (8)
 #define ROUND_UP(unaligned_mapping_size, align_val) \
-    ((unaligned_mapping_size) + (align_val)-1) & (~((align_val)-1))
+    ((unaligned_mapping_size) + (align_val) - 1) & (~((align_val) - 1))
 
 DOCA_LOG_REGISTER(GPUVERBS::HIGH_LEVEL);
 
@@ -503,8 +503,7 @@ doca_gpu_verbs_create_qp_hl(doca_gpu_verbs_qp_init_attr_hl *qp_init_attr,
         return DOCA_ERROR_INVALID_VALUE;
     }
 
-    doca_gpu_verbs_qp_hl *qp_ =
-        (doca_gpu_verbs_qp_hl *)calloc(1, sizeof(doca_gpu_verbs_qp_hl));
+    doca_gpu_verbs_qp_hl *qp_ = (doca_gpu_verbs_qp_hl *)calloc(1, sizeof(doca_gpu_verbs_qp_hl));
     if (qp_ == NULL) {
         DOCA_LOG_ERR("Failed alloc memory for high-level qp");
         return DOCA_ERROR_NO_MEMORY;

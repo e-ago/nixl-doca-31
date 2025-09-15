@@ -28,68 +28,6 @@ constexpr std::chrono::microseconds connection_delay(500000);
 
 #define ALIGN_SIZE(size, align) size = ((size + (align) - 1) / (align)) * (align);
 
-nixlDocaMr::nixlDocaMr(doca_gpu *gpu_dev_, void *addr_, uint32_t elem_num_, size_t elem_size_, struct ibv_pd *pd_) {
-    if (gpu_dev_ == nullptr || addr_ == nullptr || elem_num_ == 0 || elem_size_ == 0 || pd_ == nullptr)
-        throw std::invalid_argument("Invalid mr input values");
-
-    doca_error_t status;
-    static size_t host_page_size = sysconf(_SC_PAGESIZE);
-
-    gpu_dev = gpu_dev_;
-    dmabuf_fd = -1;
-    addr = addr_;
-    elem_num = elem_num_;
-    elem_size = elem_size_;
-    pd = pd_;
-    tot_size = elem_num * elem_size;
-    remote = false;
-    mr = nullptr;
-
-    /* Try to map GPU memory with dmabuf.
-     * Input size and address should be aliegned to host page size.
-     */
-    if ((tot_size % host_page_size) == 0 && ((reinterpret_cast<uintptr_t>(addr) % host_page_size) == 0)) {
-        status = doca_gpu_dmabuf_fd(gpu_dev, addr, tot_size, &dmabuf_fd);
-        if (status == DOCA_SUCCESS) {
-            mr = ibv_reg_dmabuf_mr(pd, 0, tot_size, 0, dmabuf_fd,
-                                    IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_ATOMIC);
-        }
-    }
-
-    /* Possible failure due to:
-     * - GPU not supporting dmabuf mapping
-     * - memory address or size not aligned to host page size
-     * - linux kernel doesn't have the dmabuf capability
-     * Fallback mechanism using legacy mode with nvidia-peermem module and ibv_reg_mr.
-     */
-    if (mr == nullptr) {
-        mr = ibv_reg_mr(pd,
-                    addr,
-                    tot_size,
-                    IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ |
-                        IBV_ACCESS_REMOTE_ATOMIC);
-        if (mr == nullptr) throw std::invalid_argument("Failed to create mr");
-    }
-
-    lkey = htobe32(mr->lkey);
-    rkey = htobe32(mr->rkey);
-};
-
-nixlDocaMr::nixlDocaMr(void *addr_, size_t tot_size_, uint32_t rkey_) {
-    if (addr_ == nullptr || tot_size_ == 0 || rkey_ == 0)
-        throw std::invalid_argument("Invalid mr input values");
-
-    addr = addr_;
-    tot_size = tot_size_;
-    rkey = rkey_;
-    remote = true;
-};
-
-nixlDocaMr::~nixlDocaMr() {
-    int ret = ibv_dereg_mr(mr);
-    if (ret != 0) NIXL_ERROR << "ibv_dereg_mr failed with error " << ret;
-};
-
 void
 nixlDocaEngineCheckCudaError(cudaError_t result, const char *message) {
     if (result != cudaSuccess) {
@@ -226,10 +164,7 @@ destroy_verbs_ah:
 }
 
 doca_error_t
-connect_verbs_qp(nixlDocaEngine *eng,
-                 doca_verbs_qp *qp,
-                 uint32_t rqpn,
-                 uint32_t remote_gid) {
+connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t remote_gid) {
     doca_error_t status = DOCA_SUCCESS, tmp_status = DOCA_SUCCESS;
     doca_verbs_qp_attr *verbs_qp_attr = NULL;
 
@@ -403,7 +338,6 @@ destroy_verbs_qp_attr:
 
     return status;
 }
-
 
 void *
 threadProgressFunc(void *arg) {
