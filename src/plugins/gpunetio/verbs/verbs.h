@@ -51,7 +51,6 @@ private:
     void
     destroyCq();
 
-    // const std::unique_ptr<doca_verbs_cq, void (*)(doca_verbs_cq *)> cq_;
     doca_gpu *gpu_dev;
     doca_dev *dev;
     doca_verbs_context *verbs_ctx;
@@ -100,7 +99,6 @@ private:
     void
     destroyQp();
 
-    // const std::unique_ptr<doca_verbs_qp, void (*)(doca_verbs_qp *)> qp_;
     doca_gpu *gpu_dev;
     doca_dev *dev;
     doca_verbs_context *verbs_ctx;

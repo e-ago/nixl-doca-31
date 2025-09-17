@@ -87,7 +87,6 @@ struct docaXferReqGpu {
     uint32_t has_notif_msg_idx;
     uint32_t msg_sz;
     uint64_t last_wqe;
-    // doca_gpu_buf_arr *notif_barr_gpu;
     uintptr_t lbuf_notif;
     uint32_t lkey_notif;
     uint64_t *last_rsvd;
@@ -95,8 +94,6 @@ struct docaXferReqGpu {
     nixl_xfer_op_t backendOp; /* Needed only in case of GPU device transfer */
     doca_gpu_dev_verbs_qp *qp_data;
     doca_gpu_dev_verbs_qp *qp_notif;
-    // doca_gpu_dev_rdma *rdma_gpu_data; /* DOCA RDMA instance GPU handler */
-    // doca_gpu_dev_rdma *rdma_gpu_notif; /* DOCA RDMA instance GPU handler */
 };
 
 struct nixlDocaNotif {
@@ -167,15 +164,11 @@ public:
 
 struct nixlDocaRdmaQp {
     std::unique_ptr<nixl::doca::verbs::qp> qp_data;
-    // doca_gpu_verbs_qp_hl *qp_data_hl;
-    // doca_gpu_dev_verbs_qp *qp_data_gpu;
     uint32_t qpn_data;
     uint32_t rqpn_data;
     uint32_t remote_gid_data;
 
     std::unique_ptr<nixl::doca::verbs::qp> qp_notif;
-    // doca_gpu_verbs_qp_hl *qp_notif_hl;
-    // doca_gpu_dev_verbs_qp *qp_notif_gpu;
     uint32_t qpn_notif;
     uint32_t rqpn_notif;
     uint32_t remote_gid_notif;
@@ -205,11 +198,6 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
 void *
 threadProgressFunc(void *arg);
 
-// doca_error_t
-// doca_gpu_verbs_destroy_qp_hl(doca_gpu_verbs_qp_hl *qp);
-// doca_error_t
-// doca_gpu_verbs_create_qp_hl(doca_gpu_verbs_qp_init_attr_hl *qp_init_attr,
-//                             doca_gpu_verbs_qp_hl **qp);
 doca_error_t
 doca_kernel_write(cudaStream_t stream,
                   doca_gpu_dev_verbs_qp *qp_gpu,

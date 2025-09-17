@@ -57,7 +57,7 @@ nixlDocaEngine::nixlDocaEngine(const nixlBackendInitParams *init_params)
         NIXL_INFO << "Using default network device mlx5_0";
     } else {
         ndevs = str_split((*custom_params)["network_devices"], " ");
-        NIXL_INFO << ndevs[0];
+        NIXL_INFO << "Using network devices" << ndevs[0];
     }
     NIXL_INFO << std::endl;
 
@@ -374,7 +374,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
     // Same peer can be server or client
     if (notifMap.find(remote_agent) != notifMap.end()) {
         NIXL_INFO << "nixlDocaInitNotif already found " << remote_agent << std::endl;
-        goto exit_success;
+        return NIXL_SUCCESS;
     }
 
     notif = new struct nixlDocaNotif;
@@ -394,7 +394,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
     }
     catch (const std::exception &e) {
         NIXL_ERROR << e.what();
-        goto error;
+        return NIXL_ERR_BACKEND;
     }
 
     notif->recv_addr = (uint8_t *)calloc(notif->elems_size * notif->elems_num, sizeof(uint8_t));
@@ -410,7 +410,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
     }
     catch (const std::exception &e) {
         NIXL_ERROR << e.what();
-        goto error;
+        return NIXL_ERR_BACKEND;
     }
 
     notif->send_pi = 0;
@@ -429,11 +429,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
 
     NIXL_INFO << "nixlDocaInitNotif added new qp for " << remote_agent << std::endl;
 
-exit_success:
     return NIXL_SUCCESS;
-
-error:
-    return NIXL_ERR_BACKEND;
 }
 
 nixl_status_t
@@ -548,7 +544,7 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
     }
     catch (const std::exception &e) {
         NIXL_ERROR << e.what();
-        goto error;
+        return NIXL_ERR_BACKEND;
     }
 
     rdma_qp->qpn_data = doca_verbs_qp_get_qpn(rdma_qp->qp_data->get_qp());
@@ -568,7 +564,7 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
     }
     catch (const std::exception &e) {
         NIXL_ERROR << e.what();
-        goto error;
+        return NIXL_ERR_BACKEND;
     }
 
     rdma_qp->qpn_notif = doca_verbs_qp_get_qpn(rdma_qp->qp_notif->get_qp());
@@ -580,9 +576,6 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
     NIXL_INFO << "DOCA addRdmaQp new QP added for " << remote_agent;
 
     return NIXL_SUCCESS;
-
-error:
-    return NIXL_ERR_BACKEND;
 }
 
 nixl_status_t
@@ -980,15 +973,12 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
     }
     catch (const std::exception &e) {
         NIXL_ERROR << e.what();
-        goto error;
+        return NIXL_ERR_BACKEND;
     }
 
     output = (nixlBackendMD *)md;
 
     return NIXL_SUCCESS;
-
-error:
-    return NIXL_ERR_BACKEND;
 }
 
 nixl_status_t
@@ -1016,7 +1006,7 @@ nixlDocaEngine::prepXfer(const nixl_xfer_op_t &operation,
     struct nixlDocaRdmaQp *rdma_qp;
     uintptr_t notif_addr;
 
-    // check device id from local dlist mr that should be all the same and same of
+    // TODO: check device id from local dlist mr that should be all the same and same of
     // the engine
     for (uint32_t idx = 0; idx < lcnt; idx++) {
         lmd = (nixlDocaPrivateMetadata *)local[idx].metadataP;
@@ -1083,7 +1073,7 @@ nixlDocaEngine::prepXfer(const nixl_xfer_op_t &operation,
 
         auto search = notifMap.find(remote_agent);
         if (search == notifMap.end()) {
-            // NIXL_ERROR << "Can't find notif for remote_agent " << remote_agent;
+            NIXL_ERROR << "Can't find notif for remote_agent " << remote_agent;
             return NIXL_ERR_INVALID_PARAM;
         }
 
@@ -1203,12 +1193,12 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
             addr = (char *)(notif.second->recv_addr + (recv_idx * notif.second->elems_size));
             msg_src = addr;
 
-            NIXL_INFO << "CPU num_msg " << num_msg << " at " << recv_idx << " addr " << (void *)addr
+            NIXL_DEBUG << "CPU num_msg " << num_msg << " at " << recv_idx << " addr " << (void *)addr
                       << " msg " << msg_src << std::endl;
 
             position = msg_src.find(msg_tag_start);
 
-            NIXL_INFO << "getNotifs idx " << recv_idx << " addr "
+            NIXL_DEBUG << "getNotifs idx " << recv_idx << " addr "
                       << (void *)((notif.second->recv_addr + (recv_idx * notif.second->elems_size)))
                       << " msg " << msg_src << " position " << (int)position << std::endl;
 
@@ -1221,7 +1211,7 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
                 std::string msg(addr + last + msg_tag_end.size(),
                                 addr + last + msg_tag_end.size() + sz);
 
-                NIXL_INFO << "getNotifs propagating notif from " << notif.first << " msg " << msg
+                NIXL_DEBUG << "getNotifs propagating notif from " << notif.first << " msg " << msg
                           << " size " << sz << " num " << num_msg << std::endl;
 
                 notif_list.push_back(std::pair(notif.first, msg));
@@ -1273,7 +1263,7 @@ nixlDocaEngine::genNotif(const std::string &remote_agent, const std::string &msg
     msg_buf = (uintptr_t)notif->send_addr + (buf_idx * notif->elems_size);
     memcpy((void *)msg_buf, newMsg.c_str(), newMsg.size());
 
-    NIXL_INFO << "genNotif to " << remote_agent << " msg size " << std::to_string((int)msg.size())
+    NIXL_DEBUG << "genNotif to " << remote_agent << " msg size " << std::to_string((int)msg.size())
               << " msg " << newMsg << " at " << buf_idx << " msg_buf " << msg_buf << "\n";
 
     std::lock_guard<std::mutex> lock(notifSendLock);
