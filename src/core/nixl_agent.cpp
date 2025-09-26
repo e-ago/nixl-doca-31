@@ -31,21 +31,6 @@
 #include "telemetry.h"
 #include "telemetry_event.h"
 
-/* ERROR log prefixed with current function name and a colon */
-#define NIXL_ERROR_FUNC NIXL_ERROR << __FUNCTION__ << ": "
-
-#define SERIALIZE_ERR(ret)                         \
-    do {                                           \
-        NIXL_ERROR_FUNC << "serialization failed"; \
-        return ret;                                \
-    } while (0)
-
-#define DESERIALIZE_ERR()                            \
-    do {                                             \
-        NIXL_ERROR_FUNC << "deserialization failed"; \
-        return NIXL_ERR_MISMATCH;                    \
-    } while (0)
-
 constexpr char TELEMETRY_ENABLED_VAR[] = "NIXL_TELEMETRY_ENABLE";
 constexpr char TELEMETRY_DIR_VAR[] = "NIXL_TELEMETRY_DIR";
 static const std::vector<std::vector<std::string>> illegal_plugin_combinations = {
@@ -154,14 +139,21 @@ nixlAgentData::nixlAgentData(const std::string &name, const nixlAgentConfig &cfg
             } else {
                 NIXL_DEBUG << "NIXL telemetry is enabled without an output file";
             }
+        } else if (cfg.captureTelemetry) {
+            telemetryEnabled = true;
+            NIXL_WARN << "NIXL telemetry is enabled through config, "
+                         "ignoring the NIXL_TELEMETRY_ENABLE environment variable";
         } else if (!strcasecmp(telemetry_env_val, "n") || !strcasecmp(telemetry_env_val, "0") ||
                    !strcasecmp(telemetry_env_val, "no") || !strcasecmp(telemetry_env_val, "off")) {
             NIXL_DEBUG << "NIXL telemetry is disabled";
         } else {
             NIXL_WARN
                 << "NIXL telemetry is disabled for invalid NIXL_TELEMETRY_ENABLE environment "
-                   "variable -- valid are 'y', 'yes', '1', 'on', 'n', 'no', '0', 'off', any case.";
+                   "variable -- valid are 'y', 'yes', '1', 'on', 'n', 'no', '0', 'off', any case";
         }
+    } else if (cfg.captureTelemetry) {
+        telemetryEnabled = true;
+        NIXL_DEBUG << "Capturing NIXL telemetry based on config (without an output file)";
     }
 }
 
@@ -697,7 +689,6 @@ nixlAgent::makeXferReq (const nixl_xfer_op_t &operation,
         NIXL_ERROR_FUNC << "remote agent '" << remote_side->remoteAgent
                         << "' was invalidated in between prepXferDlist and this call";
         data->addErrorTelemetry(NIXL_ERR_NOT_FOUND);
-        delete req_hndl;
         return NIXL_ERR_NOT_FOUND;
     }
 
@@ -1053,7 +1044,6 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
     if (data->remoteSections.count(req_hndl->remoteAgent) == 0) {
         NIXL_ERROR_FUNC << "remote agent '" << req_hndl->remoteAgent
                         << "' was invalidated after transfer request creation";
-        delete req_hndl;
         data->addErrorTelemetry(NIXL_ERR_NOT_FOUND);
         return NIXL_ERR_NOT_FOUND;
     }
@@ -1064,7 +1054,6 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
                                      req_hndl->backendHandle);
         if (req_hndl->status == NIXL_IN_PROG) {
             NIXL_ERROR_FUNC << "transfer request is still in progress and cannot be reposted";
-            delete req_hndl;
             return NIXL_ERR_REPOST_ACTIVE;
         }
 
@@ -1072,7 +1061,6 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
             data->invalidateRemoteData(req_hndl->remoteAgent);
             NIXL_ERROR_FUNC << "remote agent '" << req_hndl->remoteAgent
                             << "' was disconnected after transfer request creation";
-            delete req_hndl;
             return NIXL_ERR_REMOTE_DISCONNECT;
         }
     }
@@ -1099,7 +1087,6 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
     if (opt_args.hasNotif && (!req_hndl->engine->supportsNotif())) {
         NIXL_ERROR_FUNC << "the selected backend '" << req_hndl->engine->getType()
                         << "' does not support notifications";
-        delete req_hndl;
         data->addErrorTelemetry(NIXL_ERR_BACKEND);
         return NIXL_ERR_BACKEND;
     }
@@ -1117,7 +1104,6 @@ nixlAgent::postXferReq(nixlXferReqH *req_hndl,
             NIXL_ERROR_FUNC << "remote agent '" << req_hndl->remoteAgent
                             << "' was disconnected after transfer request creation";
             data->invalidateRemoteData(req_hndl->remoteAgent);
-            delete req_hndl;
             return NIXL_ERR_REMOTE_DISCONNECT;
         } else {
             NIXL_ERROR_FUNC << "backend '" << req_hndl->engine->getType()
@@ -1150,7 +1136,6 @@ nixlAgent::getXferStatus (nixlXferReqH *req_hndl) const {
         if (data->remoteSections.count(req_hndl->remoteAgent) == 0) {
             NIXL_ERROR_FUNC << "remote agent '" << req_hndl->remoteAgent
                             << "' was invalidated during transfer";
-            delete req_hndl;
             return NIXL_ERR_NOT_FOUND;
         }
 
@@ -1158,7 +1143,6 @@ nixlAgent::getXferStatus (nixlXferReqH *req_hndl) const {
         if (req_hndl->status < 0) {
             if (req_hndl->status == NIXL_ERR_REMOTE_DISCONNECT) {
                 data->invalidateRemoteData(req_hndl->remoteAgent);
-                delete req_hndl;
                 return NIXL_ERR_REMOTE_DISCONNECT;
             } else {
                 NIXL_ERROR_FUNC << "backend '" << req_hndl->engine->getType()
@@ -1233,7 +1217,7 @@ nixlAgent::releaseXferReq(nixlXferReqH *req_hndl) const {
 }
 
 nixl_status_t
-nixlAgent::createGpuXferReq(const nixlXferReqH &req_hndl, nixlGpuXferReqH *&gpu_req_hndl) const {
+nixlAgent::createGpuXferReq(const nixlXferReqH &req_hndl, nixlGpuXferReqH &gpu_req_hndl) const {
     if (!req_hndl.engine) {
         NIXL_ERROR_FUNC << "Invalid request handle[" << &req_hndl << "]: engine is null";
         return NIXL_ERR_INVALID_PARAM;
@@ -1245,16 +1229,17 @@ nixlAgent::createGpuXferReq(const nixlXferReqH &req_hndl, nixlGpuXferReqH *&gpu_
     }
 
     NIXL_SHARED_LOCK_GUARD(data->lock);
-    const auto status = req_hndl.engine->createGpuXferReq(*req_hndl.backendHandle, gpu_req_hndl);
+    const auto status = req_hndl.engine->createGpuXferReq(
+        *req_hndl.backendHandle, *req_hndl.initiatorDescs, *req_hndl.targetDescs, gpu_req_hndl);
     if (status == NIXL_SUCCESS) {
-        data->gpuReqToEngine.emplace(&gpu_req_hndl, req_hndl.engine);
+        data->gpuReqToEngine.emplace(gpu_req_hndl, req_hndl.engine);
     }
 
     return status;
 }
 
 void
-nixlAgent::releaseGpuXferReq(nixlGpuXferReqH *gpu_req_hndl) const {
+nixlAgent::releaseGpuXferReq(nixlGpuXferReqH gpu_req_hndl) const {
     NIXL_SHARED_LOCK_GUARD(data->lock);
     auto it = data->gpuReqToEngine.find(gpu_req_hndl);
     if (it == data->gpuReqToEngine.end()) {
@@ -1265,6 +1250,61 @@ nixlAgent::releaseGpuXferReq(nixlGpuXferReqH *gpu_req_hndl) const {
     it->second->releaseGpuXferReq(gpu_req_hndl);
 
     data->gpuReqToEngine.erase(it);
+}
+
+nixl_status_t
+nixlAgent::getGpuSignalSize(size_t &signal_size, const nixl_opt_args_t *extra_params) const {
+    if (!extra_params || extra_params->backends.empty()) {
+        NIXL_ERROR_FUNC << "backend must be specified in extra_params";
+        return NIXL_ERR_INVALID_PARAM;
+    }
+
+    NIXL_SHARED_LOCK_GUARD(data->lock);
+    return extra_params->backends[0]->engine->getGpuSignalSize(signal_size);
+}
+
+nixl_status_t
+nixlAgent::prepGpuSignal(const nixl_reg_dlist_t &signal_descs,
+                         const nixl_opt_args_t *extra_params) const {
+    if (signal_descs.descCount() == 0) {
+        NIXL_ERROR_FUNC << "signal descriptor list is empty";
+        return NIXL_ERR_INVALID_PARAM;
+    }
+
+    if (!extra_params || extra_params->backends.empty()) {
+        NIXL_ERROR_FUNC << "backend must be specified in extra_params";
+        return NIXL_ERR_INVALID_PARAM;
+    }
+
+    NIXL_SHARED_LOCK_GUARD(data->lock);
+
+    // Convert reg_dlist to xfer_dlist for populate call
+    nixl_xfer_dlist_t xfer_descs = signal_descs.trim();
+
+    nixlBackendH *backend = extra_params->backends[0];
+    nixl_meta_dlist_t result(signal_descs.getType());
+    nixl_status_t ret = data->memorySection->populate(xfer_descs, backend->engine, result);
+
+    if (ret != NIXL_SUCCESS) {
+        NIXL_ERROR_FUNC << "failed to populate signal metadata with specified backend";
+        return ret;
+    }
+
+    for (size_t i = 0; i < static_cast<size_t>(result.descCount()); i++) {
+        void *signal = reinterpret_cast<void *>(result[i].addr);
+        ret = backend->engine->prepGpuSignal(*result[i].metadataP, signal);
+
+        if (ret != NIXL_SUCCESS) {
+            NIXL_ERROR_FUNC << "failed to prepare GPU signal " << i
+                            << " with status: " << nixlEnumStrings::statusStr(ret);
+            return ret;
+        }
+
+        NIXL_DEBUG << "Successfully prepared GPU signal " << i << " at address " << signal;
+    }
+
+    NIXL_DEBUG << "Successfully prepared " << result.descCount() << " GPU signals";
+    return NIXL_SUCCESS;
 }
 
 nixl_status_t
@@ -1409,24 +1449,29 @@ nixlAgent::getLocalMD (nixl_blob_t &str) const {
 
     nixlSerDes sd;
     ret = sd.addStr("Agent", data->name);
-    if (ret) SERIALIZE_ERR(ret);
+    // Always returns SUCCESS, serdes class logs errors if necessary
+    if (ret) return NIXL_ERR_UNKNOWN;
 
     ret = sd.addBuf("Conns", &conn_cnt, sizeof(conn_cnt));
-    if (ret) SERIALIZE_ERR(ret);
+    if (ret) return NIXL_ERR_UNKNOWN;
 
     for (auto &c : data->connMD) {
         nixl_backend = c.first;
         ret = sd.addStr("t", nixl_backend);
-        if (ret) SERIALIZE_ERR(ret);
+        if (ret) break;
         ret = sd.addStr("c", c.second);
-        if (ret) SERIALIZE_ERR(ret);
+        if (ret) break;
     }
+    if (ret) return NIXL_ERR_UNKNOWN;
 
     ret = sd.addStr("", "MemSection");
-    if (ret) SERIALIZE_ERR(ret);
+    if (ret) return NIXL_ERR_UNKNOWN;
 
     ret = data->memorySection->serialize(&sd);
-    if (ret) SERIALIZE_ERR(ret);
+    if (ret) {
+        NIXL_ERROR_FUNC << "serialization failed";
+        return ret;
+    }
 
     str = sd.exportStr();
     return NIXL_SUCCESS;
@@ -1474,33 +1519,38 @@ nixlAgent::getLocalPartialMD(const nixl_reg_dlist_t &descs,
         selected_engines.insert(backend);
     }
 
-    nixlSerDes sd;
-    ret = sd.addStr("Agent", data->name);
-    if (ret) SERIALIZE_ERR(ret);
-
-    // Only add connection info if requested via extra_params or empty dlist
-    size_t conn_cnt = ((extra_params && extra_params->includeConnInfo) || descs.descCount() == 0) ?
-                      found_iters.size() : 0;
-    ret = sd.addBuf("Conns", &conn_cnt, sizeof(conn_cnt));
-    if (ret) SERIALIZE_ERR(ret);
-
-    for (size_t i = 0; i < conn_cnt; i++) {
-        ret = sd.addStr("t", found_iters[i]->first);
-        if (ret) SERIALIZE_ERR(ret);
-        ret = sd.addStr("c", found_iters[i]->second);
-        if (ret) SERIALIZE_ERR(ret);
-    }
-
     if (selected_engines.size() == 0 && descs.descCount() > 0) {
         NIXL_ERROR_FUNC << "no backends support the requested descriptors";
         return NIXL_ERR_BACKEND;
     }
 
+    nixlSerDes sd;
+    ret = sd.addStr("Agent", data->name);
+    // Always returns SUCCESS, serdes class logs errors if necessary
+    if (ret) return NIXL_ERR_UNKNOWN;
+
+    // Only add connection info if requested via extra_params or empty dlist
+    size_t conn_cnt = ((extra_params && extra_params->includeConnInfo) || descs.descCount() == 0) ?
+                      found_iters.size() : 0;
+    ret = sd.addBuf("Conns", &conn_cnt, sizeof(conn_cnt));
+    if (ret) return NIXL_ERR_UNKNOWN;
+
+    for (size_t i = 0; i < conn_cnt; i++) {
+        ret = sd.addStr("t", found_iters[i]->first);
+        if (ret) break;
+        ret = sd.addStr("c", found_iters[i]->second);
+        if (ret) break;
+    }
+    if (ret) return NIXL_ERR_UNKNOWN;
+
     ret = sd.addStr("", "MemSection");
-    if (ret) SERIALIZE_ERR(ret);
+    if (ret) return NIXL_ERR_UNKNOWN;
 
     ret = data->memorySection->serializePartial(&sd, selected_engines, descs);
-    if (ret) SERIALIZE_ERR(ret);
+    if (ret) {
+        NIXL_ERROR_FUNC << "serialization failed";
+        return ret;
+    }
 
     str = sd.exportStr();
     return NIXL_SUCCESS;
@@ -1518,7 +1568,7 @@ nixlAgent::loadRemoteMD (const nixl_blob_t &remote_metadata,
     ret = sd.importStr(remote_metadata);
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR_FUNC << "failed to deserialize remote metadata";
-        return ret;
+        return NIXL_ERR_MISMATCH;
     }
 
     std::string remote_agent = sd.getStr("Agent");
@@ -1539,16 +1589,18 @@ nixlAgent::loadRemoteMD (const nixl_blob_t &remote_metadata,
     ret = sd.getBuf("Conns", &conn_cnt, sizeof(conn_cnt));
     if (ret != NIXL_SUCCESS) {
         NIXL_ERROR_FUNC << "error getting connection count: " << ret;
-        return ret;
+        return NIXL_ERR_MISMATCH;
     }
 
     int count = 0;
     for (size_t i = 0; i < conn_cnt; ++i) {
         nixl_backend = sd.getStr("t");
-        if (nixl_backend.empty()) DESERIALIZE_ERR();
-
         conn_info = sd.getStr("c");
-        if (conn_info.empty()) DESERIALIZE_ERR();
+
+        if (nixl_backend.empty() || conn_info.empty()) {
+            NIXL_ERROR_FUNC << "failed to deserialize remote metadata";
+            return NIXL_ERR_MISMATCH;
+        }
 
         ret = data->loadConnInfo(remote_agent, nixl_backend, conn_info);
         if (ret == NIXL_SUCCESS) {
@@ -1565,7 +1617,10 @@ nixlAgent::loadRemoteMD (const nixl_blob_t &remote_metadata,
         return NIXL_ERR_BACKEND;
     }
 
-    if (sd.getStr("") != "MemSection") DESERIALIZE_ERR();
+    if (sd.getStr("") != "MemSection") {
+        NIXL_ERROR_FUNC << "failed to deserialize remote metadata";
+        return NIXL_ERR_MISMATCH;
+    }
 
     ret = data->loadRemoteSections(remote_agent, sd);
     if (ret != NIXL_SUCCESS) {

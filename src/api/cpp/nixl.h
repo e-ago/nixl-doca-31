@@ -327,7 +327,7 @@ class nixlAgent {
          * @return nixl_status_t Error code if call was not successful
          */
         nixl_status_t
-        createGpuXferReq(const nixlXferReqH &req_hndl, nixlGpuXferReqH *&gpu_req_hndl) const;
+        createGpuXferReq(const nixlXferReqH &req_hndl, nixlGpuXferReqH &gpu_req_hndl) const;
 
         /**
          * @brief  Release transfer request from GPU memory
@@ -335,7 +335,38 @@ class nixlAgent {
          * @param  gpu_req_hndl  [in] GPU transfer request handle to be released
          */
         void
-        releaseGpuXferReq(nixlGpuXferReqH *gpu_req_hndl) const;
+        releaseGpuXferReq(nixlGpuXferReqH gpu_req_hndl) const;
+
+        /**
+         * @brief  Get the size required for a GPU signal.
+         *
+         * This function returns the size required for allocating memory for a GPU signal.
+         * The returned size should be used to allocate memory that will be registered
+         * and used with @ref prepGpuSignal.
+         *
+         * @param  signal_size   [out] Size required for the GPU signal
+         * @param  extra_params  Extra parameters used in getting the size of the GPU signal.
+         *                       The backend must be specified in extra_params.
+         * @return nixl_status_t Error code if call was not successful
+         */
+        nixl_status_t
+        getGpuSignalSize(size_t &signal_size, const nixl_opt_args_t *extra_params) const;
+
+        /**
+         * @brief  Prepare a signal for GPU transfer.
+         *
+         * The caller must allocate and register the signal memory before calling this function.
+         * Use @ref getGpuSignalSize to query the required signal size, allocate
+         * the signal accordingly, and register it using @ref registerMem.
+         *
+         * @param  signal_descs  [in] Registered descriptor list for the signal memory
+         * @param  extra_params  Extra parameters used in preparing the GPU signal.
+         *                       The backend must be specified in extra_params.
+         * @return nixl_status_t Error code if call was not successful
+         */
+        nixl_status_t
+        prepGpuSignal(const nixl_reg_dlist_t &signal_descs,
+                      const nixl_opt_args_t *extra_params) const;
 
         /**
          * @brief  Release the prepared descriptor list handle `dlist_hndl`
