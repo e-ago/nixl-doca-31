@@ -202,9 +202,10 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
 void *
 threadProgressFunc(void *arg);
 int
-netif_get_addr(const char *if_name, sa_family_t af,
-                struct sockaddr *saddr,
-                struct sockaddr *netmask);
+netif_get_addr(const char *if_name,
+               sa_family_t af,
+               struct sockaddr *saddr,
+               struct sockaddr *netmask);
 doca_error_t
 doca_kernel_write(cudaStream_t stream,
                   doca_gpu_dev_verbs_qp *qp_gpu,

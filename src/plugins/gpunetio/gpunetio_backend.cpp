@@ -162,22 +162,18 @@ nixlDocaEngine::nixlDocaEngine(const nixlBackendInitParams *init_params)
     if (oobdev.size() > 0 && oobdev[0] != "") {
         netif_get_addr(oobdev[0].c_str(), AF_INET, &oob_saddr, &oob_netmask);
         struct sockaddr_in *addr_in = (struct sockaddr_in *)&oob_saddr;
-        memcpy(ipv4_addr, (uint8_t*)&(addr_in->sin_addr.s_addr), 4);
-        NIXL_DEBUG << "Eth IP address "
-                << static_cast<unsigned>(ipv4_addr[0]) << " "
-                << static_cast<unsigned>(ipv4_addr[1]) << " "
-                << static_cast<unsigned>(ipv4_addr[2]) << " "
-                << static_cast<unsigned>(ipv4_addr[3]) << " "
-                << "ifface "
-                << oobdev[0].c_str();
+        memcpy(ipv4_addr, (uint8_t *)&(addr_in->sin_addr.s_addr), 4);
+        NIXL_DEBUG << "Eth IP address " << static_cast<unsigned>(ipv4_addr[0]) << " "
+                   << static_cast<unsigned>(ipv4_addr[1]) << " "
+                   << static_cast<unsigned>(ipv4_addr[2]) << " "
+                   << static_cast<unsigned>(ipv4_addr[3]) << " " << "ifface " << oobdev[0].c_str();
     } else {
         doca_devinfo_get_ipv4_addr(
             doca_dev_as_devinfo(ddev), (uint8_t *)ipv4_addr, DOCA_DEVINFO_IPV4_ADDR_SIZE);
-        NIXL_DEBUG << "DOCA IP address "
-                << static_cast<unsigned>(ipv4_addr[0]) << " "
-                << static_cast<unsigned>(ipv4_addr[1]) << " "
-                << static_cast<unsigned>(ipv4_addr[2]) << " "
-                << static_cast<unsigned>(ipv4_addr[3]);
+        NIXL_DEBUG << "DOCA IP address " << static_cast<unsigned>(ipv4_addr[0]) << " "
+                   << static_cast<unsigned>(ipv4_addr[1]) << " "
+                   << static_cast<unsigned>(ipv4_addr[2]) << " "
+                   << static_cast<unsigned>(ipv4_addr[3]);
     }
 
     // DOCA_GPU_MEM_TYPE_GPU_CPU == GDRCopy
@@ -450,7 +446,7 @@ nixlDocaEngine::nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev
     ((volatile struct docaNotif *)notif_fill_cpu)->msg_buf = (uintptr_t)notif->recv_addr;
     ((volatile struct docaNotif *)notif_fill_cpu)->msg_lkey = notif->recv_mr->get_lkey();
     ((volatile struct docaNotif *)notif_fill_cpu)->msg_size = notif->elems_size;
-    asm volatile("mfence" : : : "memory");
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     ((volatile struct docaNotif *)notif_fill_cpu)->qp_gpu =
         qpMap[remote_agent]->qp_notif->get_qp_gpu_dev();
     while (((volatile struct docaNotif *)notif_fill_cpu)->qp_gpu != nullptr)
@@ -1228,7 +1224,7 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
     for (auto &notif : notifMap) {
         ((volatile struct docaNotif *)notif_progress_cpu)->qp_gpu =
             qpMap[notif.first]->qp_notif->get_qp_gpu_dev();
-        asm volatile("mfence" : : : "memory");
+        std::atomic_thread_fence(std::memory_order_seq_cst);
         while (((volatile struct docaNotif *)notif_progress_cpu)->qp_gpu != nullptr)
             ;
         num_msg = ((volatile struct docaNotif *)notif_progress_cpu)->msg_num;
@@ -1237,14 +1233,15 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
             addr = (char *)(notif.second->recv_addr + (recv_idx * notif.second->elems_size));
             msg_src = addr;
 
-            NIXL_DEBUG << "CPU num_msg " << num_msg << " at " << recv_idx << " addr " << (void *)addr
-                      << " msg " << msg_src << std::endl;
+            NIXL_DEBUG << "CPU num_msg " << num_msg << " at " << recv_idx << " addr "
+                       << (void *)addr << " msg " << msg_src << std::endl;
 
             position = msg_src.find(msg_tag_start);
 
             NIXL_DEBUG << "getNotifs idx " << recv_idx << " addr "
-                      << (void *)((notif.second->recv_addr + (recv_idx * notif.second->elems_size)))
-                      << " msg " << msg_src << " position " << (int)position << std::endl;
+                       << (void *)((notif.second->recv_addr +
+                                    (recv_idx * notif.second->elems_size)))
+                       << " msg " << msg_src << " position " << (int)position << std::endl;
 
             if (position != std::string::npos && position == 0) {
                 unsigned last = msg_src.find(msg_tag_end);
@@ -1256,7 +1253,7 @@ nixlDocaEngine::getNotifs(notif_list_t &notif_list) {
                                 addr + last + msg_tag_end.size() + sz);
 
                 NIXL_DEBUG << "getNotifs propagating notif from " << notif.first << " msg " << msg
-                          << " size " << sz << " num " << num_msg << std::endl;
+                           << " size " << sz << " num " << num_msg << std::endl;
 
                 notif_list.push_back(std::pair(notif.first, msg));
                 // Tag cleanup
@@ -1308,14 +1305,13 @@ nixlDocaEngine::genNotif(const std::string &remote_agent, const std::string &msg
     memcpy((void *)msg_buf, newMsg.c_str(), newMsg.size());
 
     NIXL_DEBUG << "genNotif to " << remote_agent << " msg size " << std::to_string((int)msg.size())
-              << " msg " << newMsg << " at " << buf_idx << " msg_buf " << msg_buf << "\n";
+               << " msg " << newMsg << " at " << buf_idx << " msg_buf " << msg_buf << "\n";
 
     std::lock_guard<std::mutex> lock(notifSendLock);
     ((volatile struct docaNotif *)notif_send_cpu)->msg_buf = msg_buf;
     ((volatile struct docaNotif *)notif_send_cpu)->msg_lkey = notif->send_mr->get_lkey();
     ((volatile struct docaNotif *)notif_send_cpu)->msg_size = newMsg.size();
-    // membar
-    asm volatile("mfence" : : : "memory");
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     ((volatile struct docaNotif *)notif_send_cpu)->qp_gpu =
         searchQp->second->qp_notif->get_qp_gpu_dev();
     while (((volatile struct docaNotif *)notif_send_cpu)->qp_gpu != nullptr)

@@ -389,8 +389,8 @@ threadProgressFunc(void *arg) {
     return nullptr;
 }
 
-static int sockaddr_sizeof(const struct sockaddr *addr, size_t *size_p)
-{
+static int
+sockaddr_sizeof(const struct sockaddr *addr, size_t *size_p) {
     switch (addr->sa_family) {
     case AF_INET:
         *size_p = sizeof(struct sockaddr_in);
@@ -404,15 +404,16 @@ static int sockaddr_sizeof(const struct sockaddr *addr, size_t *size_p)
     }
 }
 
-static int netif_flags_is_active(unsigned int flags)
-{
+static int
+netif_flags_is_active(unsigned int flags) {
     return (flags & IFF_UP) && (flags & IFF_RUNNING);
 }
 
-int netif_get_addr(const char *if_name, sa_family_t af,
-                                struct sockaddr *saddr,
-                                struct sockaddr *netmask)
-{
+int
+netif_get_addr(const char *if_name,
+               sa_family_t af,
+               struct sockaddr *saddr,
+               struct sockaddr *netmask) {
     int status = 0;
     struct ifaddrs *ifa;
     struct ifaddrs *ifaddrs;
@@ -430,8 +431,7 @@ int netif_get_addr(const char *if_name, sa_family_t af,
         }
 
         if ((ifa->ifa_addr == NULL) ||
-            ((ifa->ifa_addr->sa_family != AF_INET) &&
-             (ifa->ifa_addr->sa_family != AF_INET6))) {
+            ((ifa->ifa_addr->sa_family != AF_INET) && (ifa->ifa_addr->sa_family != AF_INET6))) {
             continue;
         }
 
@@ -440,7 +440,7 @@ int netif_get_addr(const char *if_name, sa_family_t af,
         }
 
         if (ifa->ifa_addr->sa_family == AF_INET6) {
-            saddr6 = (const struct sockaddr_in6*)ifa->ifa_addr;
+            saddr6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
             if (IN6_IS_ADDR_LINKLOCAL(&saddr6->sin6_addr)) {
                 continue;
             }
