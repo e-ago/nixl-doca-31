@@ -449,7 +449,7 @@ xferBenchConfig::printConfig() {
             printOption ("GPU CUDA Device id list (--device_list=dev1,dev2,...)",
                          gpunetio_device_list);
             printOption("OOB network interface name for control path (--oob_list=ifface)",
-                         gpunetio_oob_list);
+                        gpunetio_oob_list);
         }
     }
     printOption ("Initiator seg type (--initiator_seg_type=[DRAM,VRAM])", initiator_seg_type);
