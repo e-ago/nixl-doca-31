@@ -181,9 +181,7 @@ rm "libfabric-${LIBFABRIC_VERSION#v}.tar.bz2"
   $SUDO apt-get install -y --no-install-recommends doca-sdk-gpunetio libdoca-sdk-gpunetio-dev libdoca-sdk-verbs-dev doca-ofed mstflint \
 )
 
-export LIBRARY_PATH="$LIBRARY_PATH:/usr/local/cuda/lib64"
-export LD_LIBRARY_PATH="${INSTALL_DIR}/lib:${INSTALL_DIR}/lib/$ARCH-linux-gnu:${INSTALL_DIR}/lib64:$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:${INSTALL_DIR}/lib:/opt/amazon/efa/lib"
-export CPATH="${INSTALL_DIR}/include:/opt/amazon/efa/include:$CPATH"
+( \
   cd /tmp &&
   git clone --depth 1 https://github.com/google/gtest-parallel.git &&
   mkdir -p ${INSTALL_DIR}/bin &&
