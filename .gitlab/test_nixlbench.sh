@@ -80,7 +80,7 @@ run_nixlbench_two_workers() {
 }
 
 if $HAS_GPU ; then
-    apt install -y gdb
+    sudo apt install -y gdb
     run_nixlbench_two_workers --backend GPUNETIO --gpunetio_device_list=0 --device_list=mlx5_1 --gpunetio_oob_list=lo --op_type READ --initiator_seg_type VRAM --target_seg_type VRAM &
     sleep 180
     for pid in $(pidof nixlbench); do gdb --batch -ex "set pagination 0" -ex "thread apply all bt full" -ex "quit" --pid $pid; done
