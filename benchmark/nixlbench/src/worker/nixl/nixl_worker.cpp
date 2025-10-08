@@ -195,6 +195,10 @@ xferBenchNixlWorker::xferBenchNixlWorker(int *argc, char ***argv, std::vector<st
             xferBenchConfig::obj_use_virtual_addressing ? "true" : "false";
         backend_params["req_checksum"] = xferBenchConfig::obj_req_checksum;
 
+        if (xferBenchConfig::obj_ca_bundle != "") {
+            backend_params["ca_bundle"] = xferBenchConfig::obj_ca_bundle;
+        }
+
         if (xferBenchConfig::obj_endpoint_override != "") {
             backend_params["endpoint_override"] = xferBenchConfig::obj_endpoint_override;
         }
@@ -747,6 +751,7 @@ int
 xferBenchNixlWorker::exchangeMetadata() {
     int meta_sz, ret = 0;
 
+    // Skip metadata exchange for storage backends or when ETCD is not available
     if (xferBenchConfig::isStorageBackend()) {
         return 0;
     }
@@ -1053,6 +1058,12 @@ xferBenchNixlWorker::poll(size_t block_size) {
 
 int
 xferBenchNixlWorker::synchronizeStart() {
+    // For storage backends without ETCD, no synchronization needed
+    if (xferBenchConfig::isStorageBackend() && xferBenchConfig::etcd_endpoints.empty()) {
+        std::cout << "Single instance storage backend - no synchronization needed" << std::endl;
+        return 0;
+    }
+
     if (IS_PAIRWISE_AND_SG()) {
         std::cout << "Waiting for all processes to start... (expecting " << rt->getSize()
                   << " total: " << xferBenchConfig::num_initiator_dev << " initiators and "
