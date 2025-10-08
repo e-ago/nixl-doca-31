@@ -448,7 +448,7 @@ xferBenchConfig::printConfig() {
         if (backend == XFERBENCH_BACKEND_GPUNETIO) {
             printOption ("GPU CUDA Device id list (--device_list=dev1,dev2,...)",
                          gpunetio_device_list);
-            printOption ("OOB network interface name for control path (--oob_list=ifface)",
+            printOption("OOB network interface name for control path (--oob_list=ifface)",
                          gpunetio_oob_list);
         }
     }

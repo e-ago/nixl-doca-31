@@ -171,7 +171,6 @@ private:
     struct docaXferCompletion *completion_list_cpu;
     uint32_t *wait_exit_gpu;
     uint32_t *wait_exit_cpu;
-    int oob_sock_client;
     struct docaNotif *notif_fill_gpu;
     struct docaNotif *notif_fill_cpu;
     struct docaNotif *notif_progress_gpu;

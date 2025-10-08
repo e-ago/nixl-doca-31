@@ -352,7 +352,6 @@ nixlDocaEngine::~nixlDocaEngine() {
 
     // Cause accept in thread to fail and thus exit
     oob_connection_server_close(oob_sock_server);
-    oob_connection_client_close(oob_sock_client);
     progressThreadStop();
 
     ((volatile uint8_t *)wait_exit_cpu)[0] = 1;
@@ -878,6 +877,8 @@ nixlDocaEngine::disconnect(const std::string &remote_agent) {
 nixl_status_t
 nixlDocaEngine::loadRemoteConnInfo(const std::string &remote_agent,
                                    const std::string &remote_conn_info) {
+
+    int oob_sock_client;
 
     // TODO: Connect part should be moved into connect() method
     nixlDocaConnection conn;
