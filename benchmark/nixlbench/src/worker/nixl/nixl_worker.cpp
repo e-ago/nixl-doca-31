@@ -704,6 +704,10 @@ xferBenchNixlWorker::deallocateMemory(std::vector<std::vector<xferBenchIOV>> &io
 
     opt_args.backends.push_back(backend_engine);
     for (auto &iov_list : iov_lists) {
+        nixl_reg_dlist_t desc_list(seg_type);
+        iovListToNixlRegDlist(iov_list, desc_list);
+        CHECK_NIXL_ERROR(agent->deregisterMem(desc_list, &opt_args), "deregisterMem failed");
+
         for (auto &iov : iov_list) {
             switch (seg_type) {
             case DRAM_SEG:
@@ -719,10 +723,6 @@ xferBenchNixlWorker::deallocateMemory(std::vector<std::vector<xferBenchIOV>> &io
                 exit(EXIT_FAILURE);
             }
         }
-
-        nixl_reg_dlist_t desc_list(seg_type);
-        iovListToNixlRegDlist(iov_list, desc_list);
-        CHECK_NIXL_ERROR(agent->deregisterMem(desc_list, &opt_args), "deregisterMem failed");
     }
 
     if (xferBenchConfig::backend == XFERBENCH_BACKEND_OBJ) {
