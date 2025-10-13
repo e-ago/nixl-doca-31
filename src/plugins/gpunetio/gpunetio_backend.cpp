@@ -621,6 +621,7 @@ nixl_status_t
 nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remote_agent) {
     doca_error_t result;
     struct nixlDocaRdmaQp *rdma_qp = qpMap[remote_agent];
+    uint32_t lack = 0, rack = 1;
 
     NIXL_INFO << "connectClientRdmaQp: Send to server data qp connection details";
     // Data QP
@@ -702,6 +703,24 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
         return NIXL_ERR_BACKEND;
     }
 
+    if (send(oob_sock_client, &rack, sizeof(uint32_t), 0) < 0) {
+        NIXL_ERROR << "Failed to send connection details";
+        result = DOCA_ERROR_CONNECTION_ABORTED;
+        return NIXL_ERR_BACKEND;
+    }
+
+    if (recv(oob_sock_client, &lack, sizeof(uint32_t), 0) < 0) {
+        NIXL_ERROR << "Failed to receive remote ACK connection";
+        result = DOCA_ERROR_CONNECTION_ABORTED;
+        return NIXL_ERR_BACKEND;
+    }
+
+    if (lack != 1) {
+        NIXL_ERROR << "Wrong remote ACK connection value " << lack;
+        result = DOCA_ERROR_CONNECTION_ABORTED;
+        return NIXL_ERR_BACKEND;
+    }
+
     connMap[remote_agent] = 1;
 
     return NIXL_SUCCESS;
@@ -758,6 +777,7 @@ nixl_status_t
 nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remote_agent) {
     doca_error_t result;
     struct nixlDocaRdmaQp *rdma_qp = qpMap[remote_agent]; // validate
+    uint32_t lack = 0, rack = 1;
 
     NIXL_INFO << "DOCA connectServerRdmaQp for agent " << remote_agent.c_str() << std::endl;
 
@@ -844,6 +864,24 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     connMap[remote_agent] = 1;
+
+    if (recv(oob_sock_client, &lack, sizeof(uint32_t), 0) < 0) {
+        NIXL_ERROR << "Failed to receive remote ACK connection";
+        result = DOCA_ERROR_CONNECTION_ABORTED;
+        return NIXL_ERR_BACKEND;
+    }
+
+    if (lack != 1) {
+        NIXL_ERROR << "Wrong remote ACK connection value " << lack;
+        result = DOCA_ERROR_CONNECTION_ABORTED;
+        return NIXL_ERR_BACKEND;
+    }
+
+    if (send(oob_sock_client, &rack, sizeof(uint32_t), 0) < 0) {
+        NIXL_ERROR << "Failed to send connection details";
+        result = DOCA_ERROR_CONNECTION_ABORTED;
+        return NIXL_ERR_BACKEND;
+    }
 
     return NIXL_SUCCESS;
 }
