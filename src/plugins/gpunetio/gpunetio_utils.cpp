@@ -359,7 +359,7 @@ threadProgressFunc(void *arg) {
         oob_sock_client =
             accept(eng->oob_sock_server, (struct sockaddr *)&client_addr, &client_size);
         if (oob_sock_client < 0) {
-            std::cout << "Can't accept new socket connection " << oob_sock_client << stdn::endl;
+            std::cout << "Can't accept new socket connection " << oob_sock_client << std::endl;
             if (ACCESS_ONCE(eng->pthrStop) == 0)
                 NIXL_ERROR << "Can't accept new socket connection " << oob_sock_client;
             // close(eng->oob_sock_server);
