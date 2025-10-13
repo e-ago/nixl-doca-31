@@ -366,17 +366,20 @@ threadProgressFunc(void *arg) {
         }
 
         std::cout << "Server: client connected at IP: " << inet_ntoa(client_addr.sin_addr)
-                  << " and port: " << ntohs(client_addr.sin_port);
+                  << " and port: " << ntohs(client_addr.sin_port) << std::endl;
 
-        cuCtxSetCurrent(eng->main_cuda_ctx);
+        // cuCtxSetCurrent(eng->main_cuda_ctx);
 
         eng->recvRemoteAgentName(oob_sock_client, remote_agent);
 
         std::cout << "recvRemoteAgentName remoteAgent " << remote_agent << std::endl;
 
         eng->addRdmaQp(remote_agent);
+        std::cout << "Before nixlDocaInitNotif " << std::endl;
         eng->nixlDocaInitNotif(remote_agent, eng->ddev, eng->gdevs[0].second);
+        std::cout << "Before connectServerRdmaQp " << std::endl;
         eng->connectServerRdmaQp(oob_sock_client, remote_agent);
+        std::cout << "close " << oob_sock_client << std::endl;
 
         close(oob_sock_client);
         /* Wait for predefined number of */
