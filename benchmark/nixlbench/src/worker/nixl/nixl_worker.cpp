@@ -558,6 +558,7 @@ xferBenchNixlWorker::cleanupBasicDescDram(xferBenchIOV &iov) {
 #if HAVE_CUDA
 void
 xferBenchNixlWorker::cleanupBasicDescVram(xferBenchIOV &iov) {
+    printf("cleanupBasicDescVram cudaSetDevice %d\n", iov.devId);
     CHECK_CUDA_ERROR(cudaSetDevice(iov.devId), "Failed to set device");
 
     if (xferBenchConfig::enable_vmm) {
@@ -566,6 +567,7 @@ xferBenchNixlWorker::cleanupBasicDescVram(xferBenchIOV &iov) {
         CHECK_CUDA_DRIVER_ERROR(cuMemAddressFree(iov.addr, iov.padded_size),
                                 "Failed to free reserved address");
     } else {
+        printf("cleanupBasicDescVram cudaFree %p\n", (void *)iov.addr);
         CHECK_CUDA_ERROR(cudaFree((void *)iov.addr), "Failed to deallocate CUDA buffer");
     }
 }
@@ -773,19 +775,24 @@ void
 xferBenchNixlWorker::deallocateMemory(std::vector<std::vector<xferBenchIOV>> &iov_lists) {
     nixl_opt_args_t opt_args;
 
+    printf("xferBenchNixlWorker::deallocateMemory\n");
+
     opt_args.backends.push_back(backend_engine);
     for (auto &iov_list : iov_lists) {
         nixl_reg_dlist_t desc_list(seg_type);
         iovListToNixlRegDlist(iov_list, desc_list);
+        printf("before deallocateMemory\n");
         CHECK_NIXL_ERROR(agent->deregisterMem(desc_list, &opt_args), "deregisterMem failed");
 
         for (auto &iov : iov_list) {
             switch (seg_type) {
             case DRAM_SEG:
+                printf("before cleanupBasicDescDram\n");
                 cleanupBasicDescDram(iov);
                 break;
 #if HAVE_CUDA
             case VRAM_SEG:
+                printf("before cleanupBasicDescVram\n");
                 cleanupBasicDescVram(iov);
                 break;
 #endif

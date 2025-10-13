@@ -231,12 +231,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    printf("before worker_ptr->synchronize\n");
+
     ret = worker_ptr->synchronize(); // Make sure environment is not used anymore
     if (0 != ret) {
         return EXIT_FAILURE;
     }
 
+    printf("before ShutDownCommandLineFlags\n");
     gflags::ShutDownCommandLineFlags();
 
+    printf("before worker_ptr->signaled\n");
     return worker_ptr->signaled() ? EXIT_FAILURE : EXIT_SUCCESS;
 }
