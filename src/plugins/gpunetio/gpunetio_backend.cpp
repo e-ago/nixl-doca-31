@@ -1023,7 +1023,12 @@ nixl_status_t
 nixlDocaEngine::deregisterMem(nixlBackendMD *meta) {
     nixlDocaPrivateMetadata *priv = (nixlDocaPrivateMetadata *)meta;
 
-    std::cout << " deregisterMem " << priv << std::endl;
+    printf("registerMem addr %lx size %zd lkey %x rkey %x\n",
+       (uintptr_t)priv->mr->get_addr(),
+       priv->mr->get_tot_size(),
+       priv->mr->get_lkey(),
+       priv->mr->get_rkey()
+    );
 
     delete priv;
 
@@ -1067,7 +1072,7 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
     uintptr_t addr = (uintptr_t)atol(tokens[1].c_str());
     size_t tot_size = (size_t)atol(tokens[2].c_str());
 
-    std::cout << "rkey " << rkey << " addr " << addr << " tot_size " << tot_size;
+    std::cout << "rkey " << rkey << " addr " << addr << " tot_size " << tot_size << std::endl;
 
     // Empty mmap, filled with imported data
     try {

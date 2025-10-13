@@ -165,14 +165,14 @@ kernel_write(doca_gpu_dev_verbs_qp *qp, struct docaXferReqGpu *xferReqRing, uint
         wqe_idx = base_wqe_idx + idx;
         wqe_ptr = doca_gpu_dev_verbs_get_wqe_ptr(qp, wqe_idx);
 
-// #if ENABLE_DEBUG == 1
+#if ENABLE_DEBUG == 1
         printf("prepare_write radd %lx rkey %x ladd %lx lkey %x size %ld\n",
                (uint64_t)(xferReqRing[pos].rbuf[idx]),
                xferReqRing[pos].rkey[idx],
                (uint64_t)(xferReqRing[pos].lbuf[idx]),
                xferReqRing[pos].lkey[idx],
                (uint64_t)xferReqRing[pos].size[idx]);
-// #endif
+#endif
         doca_gpu_dev_verbs_wqe_prepare_write(qp,
                                              wqe_ptr,
                                              wqe_idx,
