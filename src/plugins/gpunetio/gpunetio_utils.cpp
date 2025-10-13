@@ -359,9 +359,10 @@ threadProgressFunc(void *arg) {
         oob_sock_client =
             accept(eng->oob_sock_server, (struct sockaddr *)&client_addr, &client_size);
         if (oob_sock_client < 0) {
-            if (ACCESS_ONCE(eng->pthrStop) == 0)
-                NIXL_ERROR << "Can't accept new socket connection " << oob_sock_client;
-            close(eng->oob_sock_server);
+            std::cout << "Can't accept new socket connection " << oob_sock_client << std::endl;
+            // if (ACCESS_ONCE(eng->pthrStop) == 0)
+            //     NIXL_ERROR << "Can't accept new socket connection " << oob_sock_client;
+            // close(eng->oob_sock_server);
             return nullptr;
         }
 
@@ -383,10 +384,10 @@ threadProgressFunc(void *arg) {
 
         close(oob_sock_client);
         /* Wait for predefined number of */
-        // auto start = nixlTime::getUs();
-        // while ((start + connection_delay.count()) > nixlTime::getUs()) {
-        //     std::this_thread::yield();
-        // }
+        auto start = nixlTime::getUs();
+        while ((start + connection_delay.count()) > nixlTime::getUs()) {
+            std::this_thread::yield();
+        }
     }
 
     return nullptr;

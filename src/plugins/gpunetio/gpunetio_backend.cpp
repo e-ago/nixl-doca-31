@@ -342,18 +342,22 @@ nixlDocaEngine::getSupportedMems() const {
 nixlDocaEngine::~nixlDocaEngine() {
     doca_error_t result;
 
+    std::cout << "~nixlDocaEngine " << std::endl;
+
     // per registered memory deregisters it, which removes the corresponding
     // metadata too parent destructor takes care of the desc list For remote
     // metadata, they should be removed here
-    if (this->initErr) {
+    // if (this->initErr) {
         // Nothing to do
-        return;
-    }
+        // return;
+    // }
 
     std::cout << "Before oob_connection_server_close " << oob_sock_server << std::endl;
 
     // Cause accept in thread to fail and thus exit
-    oob_connection_server_close(oob_sock_server);
+    // oob_connection_server_close(oob_sock_server);
+    // shutdown(oob_sock_server, SHUT_RDWR);
+    close(oob_sock_server);
     std::cout << "Before progressThreadStop " << std::endl;
     progressThreadStop();
 
@@ -552,6 +556,8 @@ nixlDocaEngine::progressThreadStart() {
 
 void
 nixlDocaEngine::progressThreadStop() {
+    printf("progressThreadStop\n");
+
     ACCESS_ONCE(pthrStop) = 1;
     // pthr.join();
     pthread_join(server_thread_id, nullptr);
@@ -932,6 +938,9 @@ nixlDocaEngine::connect(const std::string &remote_agent) {
 nixl_status_t
 nixlDocaEngine::disconnect(const std::string &remote_agent) {
     // Disconnection should be handled here
+
+    printf("disconnect\n");
+
     return NIXL_SUCCESS;
 }
 
@@ -1032,7 +1041,7 @@ nixl_status_t
 nixlDocaEngine::deregisterMem(nixlBackendMD *meta) {
     nixlDocaPrivateMetadata *priv = (nixlDocaPrivateMetadata *)meta;
 
-    printf("registerMem addr %lx size %zd lkey %x rkey %x\n",
+    printf("deregisterMem addr %lx size %zd lkey %x rkey %x\n",
        (uintptr_t)priv->mr->get_addr(),
        priv->mr->get_tot_size(),
        priv->mr->get_lkey(),
@@ -1040,6 +1049,8 @@ nixlDocaEngine::deregisterMem(nixlBackendMD *meta) {
     );
 
     delete priv;
+
+    printf("deregisterMem delete priv\n");
 
     return NIXL_SUCCESS;
 }
@@ -1106,6 +1117,8 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
 nixl_status_t
 nixlDocaEngine::unloadMD(nixlBackendMD *input) {
     std::cout << " unloadMD " << input << std::endl;
+
+    printf("unloadMD input\n");
 
     return NIXL_SUCCESS;
 }
