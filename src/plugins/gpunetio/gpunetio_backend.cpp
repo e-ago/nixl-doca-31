@@ -1000,6 +1000,13 @@ nixlDocaEngine::registerMem(const nixlBlobDesc &mem,
         return NIXL_ERR_BACKEND;
     }
 
+    printf("registerMem addr %lx size %zd lkey %x rkey %x\n",
+       (uintptr_t)priv->mr->get_addr(),
+       priv->mr->get_tot_size(),
+       priv->mr->get_lkey(),
+       priv->mr->get_rkey()
+    );
+
     priv->devId = mem.devId;
     ss << (uint32_t)priv->mr->get_rkey() << info_delimiter << ((uintptr_t)priv->mr->get_addr())
        << info_delimiter << ((size_t)priv->mr->get_tot_size());
@@ -1060,7 +1067,7 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
     uintptr_t addr = (uintptr_t)atol(tokens[1].c_str());
     size_t tot_size = (size_t)atol(tokens[2].c_str());
 
-    NIXL_INFO << "rkey " << rkey << " addr " << addr << " tot_size " << tot_size;
+    std::cout << "rkey " << rkey << " addr " << addr << " tot_size " << tot_size;
 
     // Empty mmap, filled with imported data
     try {
@@ -1070,6 +1077,12 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
         NIXL_ERROR << e.what();
         return NIXL_ERR_BACKEND;
     }
+
+    printf("loadRemoteMD addr %lx size %zd rkey %x\n",
+       (uintptr_t)md->mr->get_addr(),
+       md->mr->get_tot_size(),
+       md->mr->get_rkey()
+    );
 
     output = (nixlBackendMD *)md;
 
