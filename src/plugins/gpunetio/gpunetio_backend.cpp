@@ -350,11 +350,15 @@ nixlDocaEngine::~nixlDocaEngine() {
         return;
     }
 
+    std::cout << "Before oob_connection_server_close " << oob_sock_server << std::endl;
+
     // Cause accept in thread to fail and thus exit
     oob_connection_server_close(oob_sock_server);
+    std::cout << "Before progressThreadStop " << std::endl;
     progressThreadStop();
 
     ((volatile uint8_t *)wait_exit_cpu)[0] = 1;
+    std::cout << "Before cudaStreamSynchronize " << std::endl;
     nixlDocaEngineCheckCudaError(cudaStreamSynchronize(wait_stream), "stream synchronize");
     nixlDocaEngineCheckCudaError(cudaStreamDestroy(wait_stream), "stream destroy");
     doca_gpu_mem_free(gdevs[0].second, wait_exit_gpu);
@@ -363,10 +367,12 @@ nixlDocaEngine::~nixlDocaEngine() {
     doca_gpu_mem_free(gdevs[0].second, last_posted_flags);
 
     for (int i = 0; i < nstreams; i++) {
+        std::cout << "Before cudaStreamSynchronize post_stream " << i << std::endl;
         nixlDocaEngineCheckCudaError(cudaStreamSynchronize(post_stream[i]), "stream synchronize");
         nixlDocaEngineCheckCudaError(cudaStreamDestroy(post_stream[i]), "stream destroy");
     }
 
+    std::cout << "Before nixlDocaDestroyNotif " << std::endl;
     for (auto notif : notifMap)
         nixlDocaDestroyNotif(gdevs[0].second, notif.second);
 
@@ -374,6 +380,8 @@ nixlDocaEngine::~nixlDocaEngine() {
     doca_gpu_mem_free(gdevs[0].second, notif_progress_gpu);
     doca_gpu_mem_free(gdevs[0].second, notif_send_gpu);
     doca_gpu_mem_free(gdevs[0].second, completion_list_gpu);
+
+    std::cout << "Before qpMap.clear " << std::endl;
 
     qpMap.clear();
 
@@ -703,7 +711,7 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
         return NIXL_ERR_BACKEND;
     }
 
-    std::cout << "server sending rack" << rack << std::endl;
+    std::cout << "Client sending rack" << rack << std::endl;
     if (send(oob_sock_client, &rack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to send connection details";
         result = DOCA_ERROR_CONNECTION_ABORTED;
@@ -1008,6 +1016,8 @@ nixl_status_t
 nixlDocaEngine::deregisterMem(nixlBackendMD *meta) {
     nixlDocaPrivateMetadata *priv = (nixlDocaPrivateMetadata *)meta;
 
+    std::cout << " deregisterMem " << priv << std::endl;
+
     delete priv;
 
     return NIXL_SUCCESS;
@@ -1068,6 +1078,8 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
 
 nixl_status_t
 nixlDocaEngine::unloadMD(nixlBackendMD *input) {
+    std::cout << " unloadMD " << input << std::endl;
+
     return NIXL_SUCCESS;
 }
 
