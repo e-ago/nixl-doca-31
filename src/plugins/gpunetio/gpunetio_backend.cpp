@@ -703,18 +703,21 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
         return NIXL_ERR_BACKEND;
     }
 
+    std::cout << "server sending rack" << rack << std::endl;
     if (send(oob_sock_client, &rack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to send connection details";
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
 
+    std::cout << "client recv lack"  << std::endl;
     if (recv(oob_sock_client, &lack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to receive remote ACK connection";
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
 
+    std::cout << "client received lack " << lack  << std::endl;
     if (lack != 1) {
         NIXL_ERROR << "Wrong remote ACK connection value " << lack;
         result = DOCA_ERROR_CONNECTION_ABORTED;
@@ -846,7 +849,7 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     /* Connect local rdma to the remote rdma */
-    NIXL_INFO << "Connect DOCA RDMA to remote RDMA -- data" << std::endl;
+    std::cout << "Connect DOCA RDMA to remote RDMA -- data" << std::endl;
     result = connect_verbs_qp(
         this, rdma_qp->qp_data->get_qp(), rdma_qp->rqpn_data, rdma_qp->remote_gid_data);
     if (result != DOCA_SUCCESS) {
@@ -855,7 +858,7 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     /* Connect local rdma to the remote rdma */
-    NIXL_INFO << "Connect DOCA RDMA to remote RDMA -- notif" << std::endl;
+    std::cout << "Connect DOCA RDMA to remote RDMA -- notif" << std::endl;
     result = connect_verbs_qp(
         this, rdma_qp->qp_notif->get_qp(), rdma_qp->rqpn_notif, rdma_qp->remote_gid_data);
     if (result != DOCA_SUCCESS) {
@@ -865,18 +868,21 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
 
     connMap[remote_agent] = 1;
 
+    std::cout << "recv lack"  << std::endl;
     if (recv(oob_sock_client, &lack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to receive remote ACK connection";
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
 
+    std::cout << "received lack " << lack << std::endl;
     if (lack != 1) {
         NIXL_ERROR << "Wrong remote ACK connection value " << lack;
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
 
+    std::cout << "send rack " << rack << std::endl;
     if (send(oob_sock_client, &rack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to send connection details";
         result = DOCA_ERROR_CONNECTION_ABORTED;
