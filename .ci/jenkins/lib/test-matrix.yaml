@@ -91,11 +91,11 @@ steps:
       docker rm -f "${JOB_BASE_NAME}-${BUILD_ID}-${axis_index}"
       docker image rm -f "${JOB_BASE_NAME}-${BUILD_ID}-${axis_index}"
 
-# sleep 4h
   - name: Build
     parallel: false
     run: |
       docker exec -w ${WORKSPACE} -e UCX_VERSION=${UCX_VERSION} "${JOB_BASE_NAME}-${BUILD_ID}-${axis_index}" /bin/bash -c ".gitlab/build.sh ${INSTALL_DIR}"
+      sleep 4h
     onfail: |
       docker rm -f "${JOB_BASE_NAME}-${BUILD_ID}-${axis_index}"
       docker image rm -f "${JOB_BASE_NAME}-${BUILD_ID}-${axis_index}"
