@@ -206,10 +206,15 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    printf("before worker_ptr->allocateMemory %d\n", num_threads);
+
     std::vector<std::vector<xferBenchIOV>> iov_lists = worker_ptr->allocateMemory(num_threads);
     auto mem_guard = make_scope_guard ([&] {
+        printf("before worker_ptr->deallocateMemory\n");
         worker_ptr->deallocateMemory(iov_lists);
     });
+
+    printf("before worker_ptr->exchangeMetadata\n");
 
     ret = worker_ptr->exchangeMetadata();
     if (0 != ret) {
@@ -225,6 +230,7 @@ int main(int argc, char *argv[]) {
          !worker_ptr->signaled() &&
          block_size <= xferBenchConfig::max_block_size;
          block_size *= 2) {
+        printf("processBatchSizes block_size %zd num_threads %d\n", block_size, num_threads);
         ret = processBatchSizes(*worker_ptr, iov_lists, block_size, num_threads);
         if (0 != ret) {
             return EXIT_FAILURE;
@@ -232,7 +238,6 @@ int main(int argc, char *argv[]) {
     }
 
     printf("before worker_ptr->synchronize\n");
-
     ret = worker_ptr->synchronize(); // Make sure environment is not used anymore
     if (0 != ret) {
         return EXIT_FAILURE;
