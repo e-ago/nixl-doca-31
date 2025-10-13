@@ -365,14 +365,14 @@ threadProgressFunc(void *arg) {
             return nullptr;
         }
 
-        NIXL_INFO << "Client connected at IP: " << inet_ntoa(client_addr.sin_addr)
+        std::cout << "Server: client connected at IP: " << inet_ntoa(client_addr.sin_addr)
                   << " and port: " << ntohs(client_addr.sin_port);
 
         cuCtxSetCurrent(eng->main_cuda_ctx);
 
         eng->recvRemoteAgentName(oob_sock_client, remote_agent);
 
-        NIXL_DEBUG << "recvRemoteAgentName remoteAgent " << remote_agent << std::endl;
+        std::cout << "recvRemoteAgentName remoteAgent " << remote_agent << std::endl;
 
         eng->addRdmaQp(remote_agent);
         eng->nixlDocaInitNotif(remote_agent, eng->ddev, eng->gdevs[0].second);
@@ -380,10 +380,10 @@ threadProgressFunc(void *arg) {
 
         close(oob_sock_client);
         /* Wait for predefined number of */
-        auto start = nixlTime::getUs();
-        while ((start + connection_delay.count()) > nixlTime::getUs()) {
-            std::this_thread::yield();
-        }
+        // auto start = nixlTime::getUs();
+        // while ((start + connection_delay.count()) > nixlTime::getUs()) {
+        //     std::this_thread::yield();
+        // }
     }
 
     return nullptr;
