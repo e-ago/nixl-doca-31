@@ -149,11 +149,21 @@ nixlDocaEngine::nixlDocaEngine(const nixlBackendInitParams *init_params)
         }
     }
 
+    int cuda_id;
     char pciBusId[DOCA_DEVINFO_IBDEV_NAME_SIZE];
     for (auto &item : gdevs) {
         nixlDocaEngineCheckCudaError(
             cudaDeviceGetPCIBusId(pciBusId, DOCA_DEVINFO_IBDEV_NAME_SIZE, item.first),
             "cudaDeviceGetPCIBusId");
+
+        nixlDocaEngineCheckCudaError(
+            cudaDeviceGetByPCIBusId(&cuda_id, pciBusId),
+            "cudaDeviceGetByPCIBusId");
+
+        /* Initialize default CUDA context implicitely via CUDA RT API */
+        cudaSetDevice(cuda_id);
+        cudaFree(0);
+
         result = doca_gpu_create(pciBusId, &item.second);
         if (result != DOCA_SUCCESS)
             NIXL_ERROR << "Failed to create DOCA GPU device " << doca_error_get_descr(result);
