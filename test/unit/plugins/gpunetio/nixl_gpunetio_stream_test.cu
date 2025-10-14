@@ -515,7 +515,7 @@ main (int argc, char *argv[]) {
             std::cout << "Waiting for completion\n";
             while (status != NIXL_SUCCESS) {
                 status = agent.getXferStatus (treq);
-                nixl_exit_on_failure(!(status == NIXL_SUCCESS || status == NIXL_IN_PROG),
+                nixl_exit_on_failure(!(status == NIXL_SUCCESS && status == NIXL_IN_PROG),
                                      "Failed to get Xfer Status",
                                      role);
             }
@@ -531,7 +531,7 @@ main (int argc, char *argv[]) {
             std::cout << "Waiting for completion\n";
             while (status != NIXL_SUCCESS) {
                 status = agent.getXferStatus (treq);
-                nixl_exit_on_failure(!(status == NIXL_SUCCESS || status == NIXL_IN_PROG),
+                nixl_exit_on_failure(!(status == NIXL_SUCCESS && status == NIXL_IN_PROG),
                                      "Failed to get Xfer Status",
                                      role);
             }
@@ -563,7 +563,9 @@ main (int argc, char *argv[]) {
             std::cout << "Waiting for completion\n";
             while (status != NIXL_SUCCESS) {
                 status = agent.getXferStatus (treq);
-                nixl_exit_on_failure(status, "Failed to get Xfer Status", role);
+                nixl_exit_on_failure(!(status == NIXL_SUCCESS && status == NIXL_IN_PROG),
+                                     "Failed to get Xfer Status",
+                                     role);
             }
         }
 
