@@ -159,7 +159,7 @@ nixlDocaEngine::nixlDocaEngine(const nixlBackendInitParams *init_params)
         nixlDocaEngineCheckCudaError(cudaDeviceGetByPCIBusId(&cuda_id, pciBusId),
                                      "cudaDeviceGetByPCIBusId");
 
-        /* Initialize default CUDA context implicitely via CUDA RT API */
+        /* Initialize default CUDA context implicitly via CUDA RT API */
         cudaSetDevice(cuda_id);
         cudaFree(0);
 
