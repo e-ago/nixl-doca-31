@@ -233,9 +233,10 @@ int main(int argc, char *argv[]) {
         printf("processBatchSizes block_size %zd num_threads %d\n", block_size, num_threads);
         ret = processBatchSizes(*worker_ptr, iov_lists, block_size, num_threads);
         if (0 != ret) {
-            printf("error processBatchSizes ret %d\n", ret);
+            fprintf(stderr, "error processBatchSizes ret %d\n", ret);
             return EXIT_FAILURE;
         }
+        printf("processBatchSizes end block_size %zd num_threads %d\n", block_size, num_threads);
     }
 
     printf("before worker_ptr->synchronize\n");
