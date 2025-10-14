@@ -67,7 +67,7 @@ if $TEST_LIBFABRIC ; then
     ./bin/nixl_example LIBFABRIC
 fi
 ./bin/nixl_etcd_example
-#./bin/ucx_backend_test
+./bin/ucx_backend_test
 # Skip UCX_MO backend test on GPU worker, fails VRAM transfers
 if ! $HAS_GPU ; then
     ./bin/ucx_mo_backend_test

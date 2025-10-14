@@ -137,8 +137,9 @@ static int processBatchSizes(xferBenchWorker &worker,
                 worker.exchangeIOV(local_trans_lists, block_size));
 
             auto result = worker.transfer(block_size, local_trans_lists, remote_trans_lists);
-            if (std::holds_alternative<int>(result))
+            if (std::holds_alternative<int>(result)) {
                 return 1;
+            }
 
             if (xferBenchConfig::check_consistency) {
                 if (xferBenchConfig::op_type == XFERBENCH_OP_READ) {
@@ -205,12 +206,10 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-
     std::vector<std::vector<xferBenchIOV>> iov_lists = worker_ptr->allocateMemory(num_threads);
     auto mem_guard = make_scope_guard ([&] {
         worker_ptr->deallocateMemory(iov_lists);
     });
-
 
     ret = worker_ptr->exchangeMetadata();
     if (0 != ret) {
@@ -227,8 +226,9 @@ int main(int argc, char *argv[]) {
          block_size <= xferBenchConfig::max_block_size;
          block_size *= 2) {
         ret = processBatchSizes(*worker_ptr, iov_lists, block_size, num_threads);
-        if (0 != ret)
+        if (0 != ret) {
             return EXIT_FAILURE;
+        }
     }
 
     ret = worker_ptr->synchronize(); // Make sure environment is not used anymore
