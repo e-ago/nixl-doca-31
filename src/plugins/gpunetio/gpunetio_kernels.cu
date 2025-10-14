@@ -24,6 +24,21 @@
 
 #define ENABLE_DEBUG 0
 
+__device__ inline void nixl_gpunetio_dev_cq_print_cqe_err(struct mlx5_cqe64 *cqe64)
+{
+	struct mlx5_err_cqe_ex *err_cqe = (struct mlx5_err_cqe_ex *)cqe64;
+
+	printf("got completion with err: "
+	       "syndrome=%#x, vendor_err_synd=%#x, "
+	       "hw_err_synd=%#x, hw_synd_type=%#x, wqe_counter=%u wqe_qpn=%x\n",
+	       err_cqe->syndrome,
+	       err_cqe->vendor_err_synd,
+	       err_cqe->hw_err_synd,
+	       err_cqe->hw_synd_type,
+	       err_cqe->wqe_counter,
+	       err_cqe->s_wqe_opcode_qpn);
+}
+
 /**
  * @brief [Internal] Poll the Completion Queue (CQ) at a specific index respecting NIXL
  * requirements. Non-blocking polling, just one-time CQE check.
@@ -48,7 +63,10 @@ nixl_gpunetio_dev_priv_poll_one_cq_at(doca_gpu_dev_verbs_cq *cq, uint64_t cons_i
     observed_completion = observed_completion && (opcode != MLX5_CQE_INVALID);
     if (!observed_completion) return EBUSY;
 
-    return (opcode == MLX5_CQE_REQ_ERR || opcode == MLX5_CQE_RESP_ERR) * -EIO;
+    if ((opcode == MLX5_CQE_REQ_ERR || opcode == MLX5_CQE_RESP_ERR) * -EIO)
+        nixl_gpunetio_dev_cq_print_cqe_err(cqe64);
+
+    return ((opcode == MLX5_CQE_REQ_ERR || opcode == MLX5_CQE_RESP_ERR) * -EIO);
 }
 
 /**
@@ -234,7 +252,7 @@ kernel_progress(struct docaXferCompletion *completion_list,
                         continue;
 	                } else if (poll_status != 0) {
                         DOCA_GPUNETIO_VOLATILE(*exit_flag) = 1;
-                        printf("kernel_progress: Error CQE!\n");
+                        printf("kernel_progress: block %d error CQE! poll_status %d\n", blockIdx.x, poll_status);
                         break;
                     } else {
                         if (DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->has_notif_msg_idx) != DOCA_NOTIF_NULL) {
