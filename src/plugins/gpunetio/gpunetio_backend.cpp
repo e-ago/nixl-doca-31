@@ -367,7 +367,6 @@ nixlDocaEngine::~nixlDocaEngine() {
     // Cause accept in thread to fail and thus exit
     // oob_connection_server_close(oob_sock_server);
     // shutdown(oob_sock_server, SHUT_RDWR);
-    close(oob_sock_server);
     std::cout << "Before progressThreadStop " << std::endl;
     progressThreadStop();
 
@@ -566,9 +565,13 @@ nixlDocaEngine::progressThreadStart() {
 
 void
 nixlDocaEngine::progressThreadStop() {
+    int fake_sock_fd;
     printf("progressThreadStop\n");
 
     ACCESS_ONCE(pthrStop) = 1;
+    oob_connection_client_setup((char *)ipv4_addr, &fake_sock_fd);
+    close(oob_sock_server);
+    close(fake_sock_fd);
     // pthr.join();
     pthread_join(server_thread_id, nullptr);
 }
