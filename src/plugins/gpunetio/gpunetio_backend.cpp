@@ -704,7 +704,8 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
 
     // Avoid duplicating RDMA connection to the same QP by client/server threads
     std::cout << "connectClientRdmaQp: before lock" << std::endl;
-    std::lock_guard<std::mutex> lock(connectLock);
+    // std::lock_guard<std::mutex> lock(connectLock);
+    connectLock.lock();
     if (connMap.find(remote_agent) != connMap.end()) {
         NIXL_INFO << "QP for " << remote_agent << " already connected" << std::endl;
         goto sync;
@@ -717,6 +718,7 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
         this, rdma_qp->qp_data->get_qp(), rdma_qp->rqpn_data, rdma_qp->remote_gid_data);
     if (result != DOCA_SUCCESS) {
         NIXL_ERROR << "Function connect_verbs_qp data failed " << doca_error_get_descr(result);
+        connectLock.unlock();
         return NIXL_ERR_BACKEND;
     }
 
@@ -726,10 +728,12 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
         this, rdma_qp->qp_notif->get_qp(), rdma_qp->rqpn_notif, rdma_qp->remote_gid_data);
     if (result != DOCA_SUCCESS) {
         NIXL_ERROR << "Function connect_verbs_qp notif failed " << doca_error_get_descr(result);
+        connectLock.unlock();
         return NIXL_ERR_BACKEND;
     }
 
 sync:
+    connectLock.unlock();
     std::cout << "Client recv lack"  << std::endl;
     if (recv(oob_sock_client, &lack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to receive remote ACK connection";
@@ -872,8 +876,9 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     // Avoid duplicating RDMA connection to the same QP by client/server threads
-    std::lock_guard<std::mutex> lock(connectLock);
-    std::cout << "Server find" << std::endl;
+    std::cout << "connectServerRdmaQp: before lock" << std::endl;
+    // std::lock_guard<std::mutex> lock(connectLock);
+    connectLock.lock();
     if (connMap.find(remote_agent) != connMap.end()) {
         std::cout << "QP for " << remote_agent << " already connected" << std::endl;
         goto sync;
@@ -886,6 +891,7 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
         this, rdma_qp->qp_data->get_qp(), rdma_qp->rqpn_data, rdma_qp->remote_gid_data);
     if (result != DOCA_SUCCESS) {
         NIXL_ERROR << "Function connect_verbs_qp data failed " << doca_error_get_descr(result);
+        connectLock.unlock();
         return NIXL_ERR_BACKEND;
     }
 
@@ -895,12 +901,14 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
         this, rdma_qp->qp_notif->get_qp(), rdma_qp->rqpn_notif, rdma_qp->remote_gid_data);
     if (result != DOCA_SUCCESS) {
         NIXL_ERROR << "Function connect_verbs_qp notif failed " << doca_error_get_descr(result);
+        connectLock.unlock();
         return NIXL_ERR_BACKEND;
     }
 
     connMap[remote_agent] = 1;
 
 sync:
+    connectLock.unlock();
     std::cout << "Server send rack " << rack << std::endl;
     if (send(oob_sock_client, &rack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to send connection details";
