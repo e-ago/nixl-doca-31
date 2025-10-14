@@ -119,6 +119,19 @@ open_ib_device(char *name) {
     return NULL;
 }
 
+#define RC_QP_RST2INIT_REQ_ATTR_MASK \
+	(DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_WRITE | DOCA_VERBS_QP_ATTR_ATOMIC_MODE | \
+	 DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_READ | DOCA_VERBS_QP_ATTR_PKEY_INDEX | DOCA_VERBS_QP_ATTR_PORT_NUM)
+#define INIT2INIT_REQ_ATTR_MASK (0)
+#define RC_QP_INIT2RTR_REQ_ATTR_MASK \
+	(DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_RQ_PSN | DOCA_VERBS_QP_ATTR_DEST_QP_NUM | \
+	 DOCA_VERBS_QP_ATTR_PATH_MTU | DOCA_VERBS_QP_ATTR_AH_ATTR | DOCA_VERBS_QP_ATTR_MIN_RNR_TIMER | \
+	 DOCA_VERBS_QP_ATTR_MAX_DEST_RD_ATOMIC)
+#define RC_QP_RTR2RTS_REQ_ATTR_MASK \
+	(DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_SQ_PSN | DOCA_VERBS_QP_ATTR_ACK_TIMEOUT | \
+	 DOCA_VERBS_QP_ATTR_RETRY_CNT | DOCA_VERBS_QP_ATTR_RNR_RETRY | DOCA_VERBS_QP_ATTR_MAX_QP_RD_ATOMIC)
+#define RTS2RTS_REQ_ATTR_MASK (0)
+
 doca_error_t
 create_verbs_ah_attr(doca_verbs_context *verbs_context,
                      uint32_t gid_index,
@@ -263,12 +276,23 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
         goto destroy_verbs_qp_attr;
     }
 
+    status = doca_verbs_qp_attr_set_max_rd_atomic(verbs_qp_attr, 16);
+    if (status != DOCA_SUCCESS) {
+        NIXL_ERROR << "Failed to set max rd atomic " << doca_error_get_descr(status);
+        goto destroy_verbs_qp_attr;
+    }
+
+    status = doca_verbs_qp_attr_set_max_dest_rd_atomic(verbs_qp_attr, 16);
+    if (status != DOCA_SUCCESS) {
+        NIXL_ERROR << "Failed to set max dest rd atomic " << doca_error_get_descr(status);
+        goto destroy_verbs_qp_attr;
+    }
+
     status = doca_verbs_qp_attr_set_ah_attr(verbs_qp_attr, eng->verbs_ah_attr);
     if (status != DOCA_SUCCESS) {
         NIXL_ERROR << "Failed to set address handle " << doca_error_get_descr(status);
         goto destroy_verbs_qp_attr;
     }
-
 
     status = doca_verbs_qp_attr_set_dest_qp_num(verbs_qp_attr, rqpn);
     if (status != DOCA_SUCCESS) {
@@ -276,12 +300,7 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
         goto destroy_verbs_qp_attr;
     }
 
-    status = doca_verbs_qp_modify(
-        qp,
-        verbs_qp_attr,
-        DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_WRITE |
-            DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_READ | DOCA_VERBS_QP_ATTR_ATOMIC_MODE |
-            DOCA_VERBS_QP_ATTR_PKEY_INDEX | DOCA_VERBS_QP_ATTR_PORT_NUM);
+    status = doca_verbs_qp_modify(qp, verbs_qp_attr, RC_QP_RST2INIT_REQ_ATTR_MASK);
     if (status != DOCA_SUCCESS) {
         NIXL_ERROR << "Failed to modify QP " << doca_error_get_descr(status);
         goto destroy_verbs_qp_attr;
@@ -293,12 +312,7 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
         goto destroy_verbs_qp_attr;
     }
 
-    status =
-        doca_verbs_qp_modify(qp,
-                             verbs_qp_attr,
-                             DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_RQ_PSN |
-                                 DOCA_VERBS_QP_ATTR_DEST_QP_NUM | DOCA_VERBS_QP_ATTR_PATH_MTU |
-                                 DOCA_VERBS_QP_ATTR_AH_ATTR | DOCA_VERBS_QP_ATTR_MIN_RNR_TIMER);
+    status = doca_verbs_qp_modify(qp, verbs_qp_attr, RC_QP_INIT2RTR_REQ_ATTR_MASK);
     if (status != DOCA_SUCCESS) {
         NIXL_ERROR << "Failed to modify QP " << doca_error_get_descr(status);
         goto destroy_verbs_qp_attr;
@@ -311,10 +325,7 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
     }
 
     status = doca_verbs_qp_modify(qp,
-                                  verbs_qp_attr,
-                                  DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_SQ_PSN |
-                                      DOCA_VERBS_QP_ATTR_ACK_TIMEOUT |
-                                      DOCA_VERBS_QP_ATTR_RETRY_CNT | DOCA_VERBS_QP_ATTR_RNR_RETRY);
+                                  verbs_qp_attr, RC_QP_RTR2RTS_REQ_ATTR_MASK);
     if (status != DOCA_SUCCESS) {
         NIXL_ERROR << "Failed to modify QP " << doca_error_get_descr(status);
         goto destroy_verbs_qp_attr;
