@@ -566,10 +566,12 @@ nixlDocaEngine::progressThreadStart() {
 void
 nixlDocaEngine::progressThreadStop() {
     int fake_sock_fd;
+    std::stringstream ss;
+    
     printf("progressThreadStop\n");
-
     ACCESS_ONCE(pthrStop) = 1;
-    oob_connection_client_setup((char *)ipv4_addr, &fake_sock_fd);
+    ss << (int)ipv4_addr[0] << "." << (int)ipv4_addr[1] << "." << (int)ipv4_addr[2] << "." << (int)ipv4_addr[3];
+    oob_connection_client_setup(ss.str().c_str(), &fake_sock_fd);
     close(oob_sock_server);
     close(fake_sock_fd);
     // pthr.join();

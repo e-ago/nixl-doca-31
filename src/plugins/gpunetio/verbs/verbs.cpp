@@ -388,10 +388,20 @@ qp::destroyQp() {
         status = doca_umem_destroy(qp_umem);
         if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu qp umem";
     }
-
+    
     if (qp_umem_gpu_ptr != 0) {
         status = doca_gpu_mem_free(gpu_dev, qp_umem_gpu_ptr);
         if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu memory of qp ring buffer";
+    }
+
+    if (qp_umem_dbr != nullptr) {
+        status = doca_umem_destroy(qp_umem_dbr);
+        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu qp umem dbr";
+    }
+    
+    if (qp_umem_dbr_gpu_ptr != 0) {
+        status = doca_gpu_mem_free(gpu_dev, qp_umem_dbr_gpu_ptr);
+        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu memory of qp dbr";
     }
 }
 
@@ -458,6 +468,7 @@ mr::mr(void *addr_, size_t tot_size_, uint32_t rkey_)
       tot_size(tot_size_),
       rkey(rkey_) {
     remote = true;
+    ibmr = nullptr;
 }
 
 mr::~mr() {

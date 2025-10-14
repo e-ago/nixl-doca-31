@@ -223,46 +223,46 @@ kernel_progress(struct docaXferCompletion *completion_list,
             // Check xfer completion and send notif
             if (DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu) != nullptr) {
                 if (DOCA_GPUNETIO_VOLATILE(completion_list[index].completed) == 0 &&
-                    DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->in_use) == 1) {
-
+                    DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->in_use) == 1)
+                {
                     // Wait for final CQE in block of iterations
-                    if (doca_gpu_dev_verbs_poll_cq_at(
-                            doca_gpu_dev_verbs_qp_get_cq_sq(
-                                completion_list[index].xferReqRingGpu->qp_data),
-                            DOCA_GPUNETIO_VOLATILE(
-                                completion_list[index].xferReqRingGpu->last_wqe)) != 0) {
+                    int poll_status = nixl_gpunetio_dev_poll_one_cq_at<DOCA_GPUNETIO_VERBS_RESOURCE_SHARING_MODE_GPU, DOCA_GPUNETIO_VERBS_QP_SQ>
+                                                (doca_gpu_dev_verbs_qp_get_cq_sq(completion_list[index].xferReqRingGpu->qp_data),
+                                                    DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->last_wqe));
+                    if (poll_status == EBUSY) {
+	                    /* Not completed yet, continue progress loop to check exit_flag */
+                        continue;
+	                } else if (poll_status != 0) {
                         DOCA_GPUNETIO_VOLATILE(*exit_flag) = 1;
                         printf("kernel_progress: Error CQE!\n");
                         break;
-                    }
+                    } else {
+                        if (DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->has_notif_msg_idx) != DOCA_NOTIF_NULL) {
+                            #if ENABLE_DEBUG == 1
+                                printf("Notif after completion at %d id %d sz %d\n",
+                                    index,
+                                    DOCA_GPUNETIO_VOLATILE(
+                                        completion_list[index].xferReqRingGpu->has_notif_msg_idx),
+                                    (int)completion_list[index].xferReqRingGpu->msg_sz);
+                            #endif
+                            doca_gpu_dev_verbs_send(
+                                completion_list[index].xferReqRingGpu->qp_notif,
+                                doca_gpu_dev_verbs_addr{
+                                    .addr =
+                                        (uint64_t)(completion_list[index].xferReqRingGpu->lbuf_notif),
+                                    .key = completion_list[index].xferReqRingGpu->lkey_notif},
+                                completion_list[index].xferReqRingGpu->msg_sz,
+                                &out_ticket);
 
-                    if (DOCA_GPUNETIO_VOLATILE(
-                            completion_list[index].xferReqRingGpu->has_notif_msg_idx) !=
-                        DOCA_NOTIF_NULL) {
-#if ENABLE_DEBUG == 1
-                        printf("Notif after completion at %d id %d sz %d\n",
-                               index,
-                               DOCA_GPUNETIO_VOLATILE(
-                                   completion_list[index].xferReqRingGpu->has_notif_msg_idx),
-                               (int)completion_list[index].xferReqRingGpu->msg_sz);
-#endif
-                        doca_gpu_dev_verbs_send(
-                            completion_list[index].xferReqRingGpu->qp_notif,
-                            doca_gpu_dev_verbs_addr{
-                                .addr =
-                                    (uint64_t)(completion_list[index].xferReqRingGpu->lbuf_notif),
-                                .key = completion_list[index].xferReqRingGpu->lkey_notif},
-                            completion_list[index].xferReqRingGpu->msg_sz,
-                            &out_ticket);
+                            doca_gpu_dev_verbs_wait(completion_list[index].xferReqRingGpu->qp_notif, &out_ticket);
+                            #if ENABLE_DEBUG == 1
+                                printf("Notif correctly sent %ld\n", out_ticket);
+                            #endif
+                        }
 
-                        doca_gpu_dev_verbs_wait(completion_list[index].xferReqRingGpu->qp_notif,
-                                                &out_ticket);
-#if ENABLE_DEBUG == 1
-                        printf("Notif correctly sent %ld\n", out_ticket);
-#endif
+                        DOCA_GPUNETIO_VOLATILE(completion_list[index].completed) = 1;
+                        index = (index + 1) & DOCA_MAX_COMPLETION_INFLIGHT_MASK;
                     }
-                    DOCA_GPUNETIO_VOLATILE(completion_list[index].completed) = 1;
-                    index = (index + 1) & DOCA_MAX_COMPLETION_INFLIGHT_MASK;
                 }
             }
         }
