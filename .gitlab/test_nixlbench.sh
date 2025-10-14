@@ -80,7 +80,7 @@ run_nixlbench_two_workers() {
 }
 
 if $HAS_GPU ; then
-    seg_types="VRAM DRAM"
+    seg_types="DRAM VRAM"
 else
     seg_types="DRAM"
     echo "Worker without GPU, skipping VRAM tests"
