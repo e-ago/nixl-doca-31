@@ -137,10 +137,8 @@ static int processBatchSizes(xferBenchWorker &worker,
                 worker.exchangeIOV(local_trans_lists, block_size));
 
             auto result = worker.transfer(block_size, local_trans_lists, remote_trans_lists);
-            if (std::holds_alternative<int>(result)) {
-                fprintf(stderr, "result error worker.transfer\n");
+            if (std::holds_alternative<int>(result))
                 return 1;
-            }
 
             if (xferBenchConfig::check_consistency) {
                 if (xferBenchConfig::op_type == XFERBENCH_OP_READ) {
@@ -207,14 +205,12 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    printf("before worker_ptr->allocateMemory %d\n", num_threads);
 
     std::vector<std::vector<xferBenchIOV>> iov_lists = worker_ptr->allocateMemory(num_threads);
     auto mem_guard = make_scope_guard ([&] {
         worker_ptr->deallocateMemory(iov_lists);
     });
 
-    printf("before worker_ptr->exchangeMetadata\n");
 
     ret = worker_ptr->exchangeMetadata();
     if (0 != ret) {
@@ -230,24 +226,17 @@ int main(int argc, char *argv[]) {
          !worker_ptr->signaled() &&
          block_size <= xferBenchConfig::max_block_size;
          block_size *= 2) {
-        printf("processBatchSizes block_size %zd num_threads %d\n", block_size, num_threads);
         ret = processBatchSizes(*worker_ptr, iov_lists, block_size, num_threads);
-        if (0 != ret) {
-            fprintf(stderr, "error processBatchSizes ret %d\n", ret);
+        if (0 != ret)
             return EXIT_FAILURE;
-        }
-        printf("processBatchSizes end block_size %zd num_threads %d\n", block_size, num_threads);
     }
 
-    printf("before worker_ptr->synchronize\n");
     ret = worker_ptr->synchronize(); // Make sure environment is not used anymore
     if (0 != ret) {
         return EXIT_FAILURE;
     }
 
-    printf("before ShutDownCommandLineFlags\n");
     gflags::ShutDownCommandLineFlags();
 
-    printf("before worker_ptr->signaled\n");
     return worker_ptr->signaled() ? EXIT_FAILURE : EXIT_SUCCESS;
 }

@@ -725,7 +725,6 @@ xferBenchUtils::printStats(bool is_target,
     // called here
     if (is_target && IS_PAIRWISE_AND_SG() && rt->getSize() > 2) {
         rt->reduceSumDouble(&throughput_gb, &totalbw, 0);
-        fprintf(stderr, "printStats 1\n");
         return;
     }
 
@@ -747,9 +746,7 @@ xferBenchUtils::printStats(bool is_target,
         totalbw = throughput_gb;
     }
 
-    printf("IS_PAIRWISE_AND_SG %d rt->getRank %d\n", IS_PAIRWISE_AND_SG(), rt->getRank());
     if (IS_PAIRWISE_AND_SG() && rt->getRank() != 0) {
-        fprintf(stderr, "printStats 2\n");
         return;
     }
 
