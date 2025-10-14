@@ -366,6 +366,12 @@ threadProgressFunc(void *arg) {
             return nullptr;
         }
 
+        if (ACCESS_ONCE(eng->pthrStop) == 1) {
+            NIXL_ERROR << "Stopping thread " << oob_sock_client;
+            return nullptr;
+        }
+            
+
         std::cout << "Server: client connected at IP: " << inet_ntoa(client_addr.sin_addr)
                   << " and port: " << ntohs(client_addr.sin_port) << std::endl;
 

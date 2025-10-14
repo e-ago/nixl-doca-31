@@ -1115,7 +1115,7 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
     uintptr_t addr = (uintptr_t)atol(tokens[1].c_str());
     size_t tot_size = (size_t)atol(tokens[2].c_str());
 
-    std::cout << "rkey " << rkey << " addr " << addr << " tot_size " << tot_size << std::endl;
+    // std::cout << "rkey " << rkey << " addr " << addr << " tot_size " << tot_size << std::endl;
 
     // Empty mmap, filled with imported data
     try {

@@ -252,7 +252,8 @@ kernel_progress(struct docaXferCompletion *completion_list,
                         continue;
 	                } else if (poll_status != 0) {
                         DOCA_GPUNETIO_VOLATILE(*exit_flag) = 1;
-                        printf("kernel_progress: block %d error CQE! poll_status %d\n", blockIdx.x, poll_status);
+                        printf("kernel_progress: block %d error CQE! poll_status %d wqe %d index %d\n",
+                                blockIdx.x, poll_status, DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->last_wqe), index);
                         break;
                     } else {
                         if (DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->has_notif_msg_idx) != DOCA_NOTIF_NULL) {
