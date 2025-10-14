@@ -138,7 +138,7 @@ static int processBatchSizes(xferBenchWorker &worker,
 
             auto result = worker.transfer(block_size, local_trans_lists, remote_trans_lists);
             if (std::holds_alternative<int>(result)) {
-                printf("result error worker.transfer\n");
+                fprintf(stderr, "result error worker.transfer\n");
                 return 1;
             }
 
