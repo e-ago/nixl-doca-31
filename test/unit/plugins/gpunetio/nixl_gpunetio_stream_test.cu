@@ -485,7 +485,9 @@ main (int argc, char *argv[]) {
             std::cout << "Waiting for completion to re-use buffers\n";
             while (status != NIXL_SUCCESS) {
                 status = agent.getXferStatus (treq);
-                nixl_exit_on_failure(status < 0, "Failed to get Xfer Status", role);
+                nixl_exit_on_failure(!(status == NIXL_SUCCESS && status == NIXL_IN_PROG),
+                                     "Failed to get Xfer Status",
+                                     role);
             }
             // No need for cudaStreamSyncronize as CUDA kernel and Xfer are on the same stream
             std::cout << "Second xfer, prepare data, GPU mode, transfer 2" << std::endl;
