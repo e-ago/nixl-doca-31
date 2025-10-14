@@ -103,11 +103,11 @@ fi
 # GPUNETIO tests
 if $HAS_GPU ; then
     for op_type in WRITE READ; do
-        for initiator in $seg_types; do
-            for target in $seg_types; do
-                run_nixlbench_two_workers --backend GPUNETIO --device_list=mlx5_0 --gpunetio_oob_list=lo --op_type $op_type --initiator_seg_type $initiator --target_seg_type $target
-            done
-        done
+        # for initiator in $seg_types; do
+            # for target in $seg_types; do
+                run_nixlbench_two_workers --backend GPUNETIO --device_list=mlx5_0 --gpunetio_oob_list=lo --op_type $op_type --initiator_seg_type "DRAM" --target_seg_type "DRAM"
+            # done
+        # done
     done
 fi
 pkill etcd

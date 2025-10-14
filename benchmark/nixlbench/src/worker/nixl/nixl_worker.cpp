@@ -862,6 +862,9 @@ xferBenchNixlWorker::exchangeMetadata() {
         } else {
             destrank = 0;
         }
+
+        std::cout << "getLocalMD " << local_metadata << std::endl;
+
         rt->sendInt(&meta_sz, destrank);
         rt->sendChar((char *)buffer, meta_sz, destrank);
     } else if (isInitiator()) {
@@ -889,6 +892,7 @@ xferBenchNixlWorker::exchangeMetadata() {
             return ret;
         }
 
+        std::cout << "loadRemoteMD " << remote_metadata << std::endl;
         nixl_status_t status = agent->loadRemoteMD(remote_metadata, remote_agent);
         if (status != NIXL_SUCCESS) {
             std::cerr << "NIXL: loadRemoteMD failed: " << nixlEnumStrings::statusStr(status)
