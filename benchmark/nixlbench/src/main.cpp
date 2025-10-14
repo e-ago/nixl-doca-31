@@ -138,6 +138,7 @@ static int processBatchSizes(xferBenchWorker &worker,
 
             auto result = worker.transfer(block_size, local_trans_lists, remote_trans_lists);
             if (std::holds_alternative<int>(result)) {
+                printf("result error worker.transfer\n");
                 return 1;
             }
 
@@ -210,7 +211,6 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::vector<xferBenchIOV>> iov_lists = worker_ptr->allocateMemory(num_threads);
     auto mem_guard = make_scope_guard ([&] {
-        printf("before worker_ptr->deallocateMemory\n");
         worker_ptr->deallocateMemory(iov_lists);
     });
 
@@ -233,6 +233,7 @@ int main(int argc, char *argv[]) {
         printf("processBatchSizes block_size %zd num_threads %d\n", block_size, num_threads);
         ret = processBatchSizes(*worker_ptr, iov_lists, block_size, num_threads);
         if (0 != ret) {
+            printf("error processBatchSizes ret %d\n", ret);
             return EXIT_FAILURE;
         }
     }

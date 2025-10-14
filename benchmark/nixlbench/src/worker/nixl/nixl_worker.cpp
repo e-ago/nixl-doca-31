@@ -1100,6 +1100,7 @@ xferBenchNixlWorker::transfer(size_t block_size,
         ret = execTransfer(
             agent, local_iovs, remote_iovs, xfer_op, skip, xferBenchConfig::num_threads, stats);
         if (ret < 0) {
+            printf("1) execTransfer ret %d\n", ret);
             return std::variant<xferBenchStats, int>(ret);
         }
     }
@@ -1112,6 +1113,7 @@ xferBenchNixlWorker::transfer(size_t block_size,
     ret = execTransfer(
         agent, local_iovs, remote_iovs, xfer_op, num_iter, xferBenchConfig::num_threads, stats);
     if (ret < 0) {
+        printf("2) execTransfer ret %d\n", ret);
         return std::variant<xferBenchStats, int>(ret);
     }
 
