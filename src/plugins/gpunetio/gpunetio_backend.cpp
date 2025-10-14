@@ -491,9 +491,10 @@ nixlDocaEngine::progressThreadStart() {
     struct sockaddr_in server_addr = {0};
     int enable = 1;
     int result;
-    pthrStop = pthrActive = 0;
     noSyncIters = 32;
 
+    pthrStop = (volatile uint32_t *) calloc(1, sizeof(uint32_t));
+    *pthrStop = 0;
     /* Create socket */
 
     oob_sock_server = socket(AF_INET, SOCK_STREAM, 0);
@@ -569,13 +570,14 @@ nixlDocaEngine::progressThreadStop() {
     std::stringstream ss;
     
     printf("progressThreadStop\n");
-    ACCESS_ONCE(pthrStop) = 1;
+    ACCESS_ONCE(*pthrStop) = 1;
     ss << (int)ipv4_addr[0] << "." << (int)ipv4_addr[1] << "." << (int)ipv4_addr[2] << "." << (int)ipv4_addr[3];
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     oob_connection_client_setup(ss.str().c_str(), &fake_sock_fd);
-    close(oob_sock_server);
-    close(fake_sock_fd);
     // pthr.join();
     pthread_join(server_thread_id, nullptr);
+    close(oob_sock_server);
+    close(fake_sock_fd);
 }
 
 uint32_t

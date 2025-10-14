@@ -350,23 +350,20 @@ threadProgressFunc(void *arg) {
     std::string remote_agent;
 
     nixlDocaEngine *eng = (nixlDocaEngine *)arg;
-
-    eng->pthrActive = 1;
-
-    while (ACCESS_ONCE(eng->pthrStop) == 0) {
+    while (ACCESS_ONCE(*eng->pthrStop) == 0) {
         /* Accept an incoming connection: */
         client_size = sizeof(client_addr);
         oob_sock_client =
             accept(eng->oob_sock_server, (struct sockaddr *)&client_addr, &client_size);
         if (oob_sock_client < 0) {
             std::cout << "Can't accept new socket connection " << oob_sock_client << std::endl;
-            if (ACCESS_ONCE(eng->pthrStop) == 0)
+            if (ACCESS_ONCE(*eng->pthrStop) == 0)
                 NIXL_ERROR << "Can't accept new socket connection " << oob_sock_client;
             // close(eng->oob_sock_server);
             return nullptr;
         }
 
-        if (ACCESS_ONCE(eng->pthrStop) == 1) {
+        if (ACCESS_ONCE(*eng->pthrStop) == 1) {
             NIXL_ERROR << "Stopping thread " << oob_sock_client;
             return nullptr;
         }

@@ -48,7 +48,7 @@ public:
     nixl_status_t
     nixlDocaInitNotif(const std::string &remote_agent, doca_dev *dev, doca_gpu *gpu);
 
-    volatile uint8_t pthrStop, pthrActive;
+    volatile uint32_t *pthrStop;
     nixlDocaEngine(const nixlBackendInitParams *init_params);
     ~nixlDocaEngine();
 
