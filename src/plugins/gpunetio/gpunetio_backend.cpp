@@ -811,21 +811,19 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     // Notif QP
-    NIXL_DEBUG << "Server Receive remote notif qp connection details 1";
+    NIXL_DEBUG << "Server Receive remote notif qp connection details";
     if (recv(oob_sock_client, &rdma_qp->rqpn_notif, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to receive remote connection details";
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
 
-    NIXL_DEBUG << "Server Receive remote notif qp connection details 2";
     if (recv(oob_sock_client, &remote_gid.raw, sizeof(gid.raw), 0) < 0) {
         NIXL_ERROR << "Failed to receive remote GID raw address";
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
 
-    NIXL_DEBUG << "Server Receive remote notif qp connection details 3";
     if (recv(oob_sock_client, &dlid, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to receive remote GID address";
         result = DOCA_ERROR_CONNECTION_ABORTED;
@@ -833,7 +831,7 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     // Data QP
-    NIXL_DEBUG << "Server Send remote notif qp connection details 1";
+    NIXL_DEBUG << "Server Send remote notif qp connection details";
     if (send(oob_sock_client, &rdma_qp->qpn_data, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to send connection details";
         result = DOCA_ERROR_CONNECTION_ABORTED;
@@ -841,14 +839,13 @@ nixlDocaEngine::connectServerRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     // Notif QP
-    NIXL_DEBUG << "Server Send remote notif qp connection details 2";
+    NIXL_DEBUG << "Server Send remote notif qp connection details";
     if (send(oob_sock_client, &rdma_qp->qpn_notif, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to send connection details";
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
 
-    NIXL_DEBUG << "Server Send remote notif qp connection details 3";
     if (send(oob_sock_client, &gid.raw, sizeof(gid.raw), 0) < 0) {
         NIXL_ERROR << "Failed to send local GID raw address";
         result = DOCA_ERROR_CONNECTION_ABORTED;
