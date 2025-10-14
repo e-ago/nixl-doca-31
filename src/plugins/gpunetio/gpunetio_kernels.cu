@@ -24,19 +24,19 @@
 
 #define ENABLE_DEBUG 0
 
-__device__ inline void nixl_gpunetio_dev_cq_print_cqe_err(struct mlx5_cqe64 *cqe64)
-{
-	struct mlx5_err_cqe_ex *err_cqe = (struct mlx5_err_cqe_ex *)cqe64;
+__device__ inline void
+nixl_gpunetio_dev_cq_print_cqe_err(struct mlx5_cqe64 *cqe64) {
+    struct mlx5_err_cqe_ex *err_cqe = (struct mlx5_err_cqe_ex *)cqe64;
 
-	printf("got completion with err: "
-	       "syndrome=%#x, vendor_err_synd=%#x, "
-	       "hw_err_synd=%#x, hw_synd_type=%#x, wqe_counter=%u wqe_qpn=%x\n",
-	       err_cqe->syndrome,
-	       err_cqe->vendor_err_synd,
-	       err_cqe->hw_err_synd,
-	       err_cqe->hw_synd_type,
-	       err_cqe->wqe_counter,
-	       err_cqe->s_wqe_opcode_qpn);
+    printf("got completion with err: "
+           "syndrome=%#x, vendor_err_synd=%#x, "
+           "hw_err_synd=%#x, hw_synd_type=%#x, wqe_counter=%u wqe_qpn=%x\n",
+           err_cqe->syndrome,
+           err_cqe->vendor_err_synd,
+           err_cqe->hw_err_synd,
+           err_cqe->hw_synd_type,
+           err_cqe->wqe_counter,
+           err_cqe->s_wqe_opcode_qpn);
 }
 
 /**
@@ -241,42 +241,52 @@ kernel_progress(struct docaXferCompletion *completion_list,
             // Check xfer completion and send notif
             if (DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu) != nullptr) {
                 if (DOCA_GPUNETIO_VOLATILE(completion_list[index].completed) == 0 &&
-                    DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->in_use) == 1)
-                {
+                    DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->in_use) == 1) {
                     // Wait for final CQE in block of iterations
-                    int poll_status = nixl_gpunetio_dev_poll_one_cq_at<DOCA_GPUNETIO_VERBS_RESOURCE_SHARING_MODE_GPU, DOCA_GPUNETIO_VERBS_QP_SQ>
-                                                (doca_gpu_dev_verbs_qp_get_cq_sq(completion_list[index].xferReqRingGpu->qp_data),
-                                                    DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->last_wqe));
+                    int poll_status = nixl_gpunetio_dev_poll_one_cq_at<
+                        DOCA_GPUNETIO_VERBS_RESOURCE_SHARING_MODE_GPU,
+                        DOCA_GPUNETIO_VERBS_QP_SQ>(
+                        doca_gpu_dev_verbs_qp_get_cq_sq(
+                            completion_list[index].xferReqRingGpu->qp_data),
+                        DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->last_wqe));
                     if (poll_status == EBUSY) {
-	                    /* Not completed yet, continue progress loop to check exit_flag */
+                        /* Not completed yet, continue progress loop to check exit_flag */
                         continue;
-	                } else if (poll_status != 0) {
+                    } else if (poll_status != 0) {
                         DOCA_GPUNETIO_VOLATILE(*exit_flag) = 1;
-                        printf("kernel_progress: block %d error CQE! poll_status %d wqe %d index %d\n",
-                                blockIdx.x, poll_status, DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->last_wqe), index);
+                        printf(
+                            "kernel_progress: block %d error CQE! poll_status %d wqe %ld index "
+                            "%d\n",
+                            blockIdx.x,
+                            poll_status,
+                            DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->last_wqe),
+                            index);
                         break;
                     } else {
-                        if (DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->has_notif_msg_idx) != DOCA_NOTIF_NULL) {
-                            #if ENABLE_DEBUG == 1
-                                printf("Notif after completion at %d id %d sz %d\n",
-                                    index,
-                                    DOCA_GPUNETIO_VOLATILE(
-                                        completion_list[index].xferReqRingGpu->has_notif_msg_idx),
-                                    (int)completion_list[index].xferReqRingGpu->msg_sz);
-                            #endif
+                        if (DOCA_GPUNETIO_VOLATILE(
+                                completion_list[index].xferReqRingGpu->has_notif_msg_idx) !=
+                            DOCA_NOTIF_NULL) {
+#if ENABLE_DEBUG == 1
+                            printf("Notif after completion at %d id %d sz %d\n",
+                                   index,
+                                   DOCA_GPUNETIO_VOLATILE(
+                                       completion_list[index].xferReqRingGpu->has_notif_msg_idx),
+                                   (int)completion_list[index].xferReqRingGpu->msg_sz);
+#endif
                             doca_gpu_dev_verbs_send(
                                 completion_list[index].xferReqRingGpu->qp_notif,
                                 doca_gpu_dev_verbs_addr{
-                                    .addr =
-                                        (uint64_t)(completion_list[index].xferReqRingGpu->lbuf_notif),
+                                    .addr = (uint64_t)(completion_list[index]
+                                                           .xferReqRingGpu->lbuf_notif),
                                     .key = completion_list[index].xferReqRingGpu->lkey_notif},
                                 completion_list[index].xferReqRingGpu->msg_sz,
                                 &out_ticket);
 
-                            doca_gpu_dev_verbs_wait(completion_list[index].xferReqRingGpu->qp_notif, &out_ticket);
-                            #if ENABLE_DEBUG == 1
-                                printf("Notif correctly sent %ld\n", out_ticket);
-                            #endif
+                            doca_gpu_dev_verbs_wait(completion_list[index].xferReqRingGpu->qp_notif,
+                                                    &out_ticket);
+#if ENABLE_DEBUG == 1
+                            printf("Notif correctly sent %ld\n", out_ticket);
+#endif
                         }
 
                         DOCA_GPUNETIO_VOLATILE(completion_list[index].completed) = 1;

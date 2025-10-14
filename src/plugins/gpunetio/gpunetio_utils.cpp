@@ -119,17 +119,19 @@ open_ib_device(char *name) {
     return NULL;
 }
 
-#define RC_QP_RST2INIT_REQ_ATTR_MASK \
-	(DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_WRITE | DOCA_VERBS_QP_ATTR_ATOMIC_MODE | \
-	 DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_READ | DOCA_VERBS_QP_ATTR_PKEY_INDEX | DOCA_VERBS_QP_ATTR_PORT_NUM)
+#define RC_QP_RST2INIT_REQ_ATTR_MASK                                         \
+    (DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_WRITE | \
+     DOCA_VERBS_QP_ATTR_ATOMIC_MODE | DOCA_VERBS_QP_ATTR_ALLOW_REMOTE_READ | \
+     DOCA_VERBS_QP_ATTR_PKEY_INDEX | DOCA_VERBS_QP_ATTR_PORT_NUM)
 #define INIT2INIT_REQ_ATTR_MASK (0)
-#define RC_QP_INIT2RTR_REQ_ATTR_MASK \
-	(DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_RQ_PSN | DOCA_VERBS_QP_ATTR_DEST_QP_NUM | \
-	 DOCA_VERBS_QP_ATTR_PATH_MTU | DOCA_VERBS_QP_ATTR_AH_ATTR | DOCA_VERBS_QP_ATTR_MIN_RNR_TIMER | \
-	 DOCA_VERBS_QP_ATTR_MAX_DEST_RD_ATOMIC)
-#define RC_QP_RTR2RTS_REQ_ATTR_MASK \
-	(DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_SQ_PSN | DOCA_VERBS_QP_ATTR_ACK_TIMEOUT | \
-	 DOCA_VERBS_QP_ATTR_RETRY_CNT | DOCA_VERBS_QP_ATTR_RNR_RETRY | DOCA_VERBS_QP_ATTR_MAX_QP_RD_ATOMIC)
+#define RC_QP_INIT2RTR_REQ_ATTR_MASK                                                               \
+    (DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_RQ_PSN | DOCA_VERBS_QP_ATTR_DEST_QP_NUM |  \
+     DOCA_VERBS_QP_ATTR_PATH_MTU | DOCA_VERBS_QP_ATTR_AH_ATTR | DOCA_VERBS_QP_ATTR_MIN_RNR_TIMER | \
+     DOCA_VERBS_QP_ATTR_MAX_DEST_RD_ATOMIC)
+#define RC_QP_RTR2RTS_REQ_ATTR_MASK                                                               \
+    (DOCA_VERBS_QP_ATTR_NEXT_STATE | DOCA_VERBS_QP_ATTR_SQ_PSN | DOCA_VERBS_QP_ATTR_ACK_TIMEOUT | \
+     DOCA_VERBS_QP_ATTR_RETRY_CNT | DOCA_VERBS_QP_ATTR_RNR_RETRY |                                \
+     DOCA_VERBS_QP_ATTR_MAX_QP_RD_ATOMIC)
 #define RTS2RTS_REQ_ATTR_MASK (0)
 
 doca_error_t
@@ -324,8 +326,7 @@ connect_verbs_qp(nixlDocaEngine *eng, doca_verbs_qp *qp, uint32_t rqpn, uint32_t
         goto destroy_verbs_qp_attr;
     }
 
-    status = doca_verbs_qp_modify(qp,
-                                  verbs_qp_attr, RC_QP_RTR2RTS_REQ_ATTR_MASK);
+    status = doca_verbs_qp_modify(qp, verbs_qp_attr, RC_QP_RTR2RTS_REQ_ATTR_MASK);
     if (status != DOCA_SUCCESS) {
         NIXL_ERROR << "Failed to modify QP " << doca_error_get_descr(status);
         goto destroy_verbs_qp_attr;
@@ -364,10 +365,11 @@ threadProgressFunc(void *arg) {
     while (ACCESS_ONCE(*eng->pthrStop) == 0) {
         /* Accept an incoming connection: */
         client_size = sizeof(client_addr);
+        NIXL_ERROR << "Waiting on socket server ";
         oob_sock_client =
             accept(eng->oob_sock_server, (struct sockaddr *)&client_addr, &client_size);
         if (oob_sock_client < 0) {
-            std::cout << "Can't accept new socket connection " << oob_sock_client << std::endl;
+            NIXL_ERROR << "Can't accept new socket connection " << oob_sock_client;
             if (ACCESS_ONCE(*eng->pthrStop) == 0)
                 NIXL_ERROR << "Can't accept new socket connection " << oob_sock_client;
             // close(eng->oob_sock_server);
@@ -375,27 +377,22 @@ threadProgressFunc(void *arg) {
         }
 
         if (ACCESS_ONCE(*eng->pthrStop) == 1) {
-            NIXL_ERROR << "Stopping thread " << oob_sock_client;
+            NIXL_DEBUG << "Stopping thread " << oob_sock_client;
             return nullptr;
         }
 
-        std::cout << "Server: client connected at IP: " << inet_ntoa(client_addr.sin_addr)
+        NIXL_INFO << "Server: client connected at IP: " << inet_ntoa(client_addr.sin_addr)
                   << " and port: " << ntohs(client_addr.sin_port) << std::endl;
 
         // cuCtxSetCurrent(eng->main_cuda_ctx);
 
         eng->recvRemoteAgentName(oob_sock_client, remote_agent);
 
-        std::cout << "recvRemoteAgentName remoteAgent " << remote_agent << std::endl;
-
         eng->addRdmaQp(remote_agent);
-        std::cout << "Before nixlDocaInitNotif " << std::endl;
         eng->nixlDocaInitNotif(remote_agent, eng->ddev, eng->gdevs[0].second);
-        std::cout << "Before connectServerRdmaQp " << std::endl;
         eng->connectServerRdmaQp(oob_sock_client, remote_agent);
-        std::cout << "close " << oob_sock_client << std::endl;
-
         close(oob_sock_client);
+
         /* Wait for predefined number of */
         // auto start = nixlTime::getUs();
         // while ((start + connection_delay.count()) > nixlTime::getUs()) {

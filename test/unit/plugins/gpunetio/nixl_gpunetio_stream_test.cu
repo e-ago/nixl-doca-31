@@ -481,7 +481,6 @@ main (int argc, char *argv[]) {
             status = agent.postXferReq (treq);
             nixl_exit_on_failure((status < 0), "Failed to post Xfer Req", role);
 
-            POP_RANGE
 
             std::cout << "Waiting for completion to re-use buffers\n";
             while (status != NIXL_SUCCESS) {
@@ -512,7 +511,6 @@ main (int argc, char *argv[]) {
             std::cout << "Post the request with GPUNETIO backend transfer 2" << std::endl;
             status = agent.postXferReq (treq);
             nixl_exit_on_failure(status, "Failed to post Xfer Req", role);
-            POP_RANGE
 
             std::cout << "Waiting for completion\n";
             while (status != NIXL_SUCCESS) {
@@ -529,7 +527,6 @@ main (int argc, char *argv[]) {
             std::cout << "Post the request with GPUNETIO backend transfer 1" << std::endl;
             status = agent.postXferReq (treq);
             nixl_exit_on_failure(status, "Failed to post Xfer Req", role);
-            POP_RANGE
 
             std::cout << "Waiting for completion\n";
             while (status != NIXL_SUCCESS) {
@@ -562,7 +559,6 @@ main (int argc, char *argv[]) {
             std::cout << "Post the request with GPUNETIO backend transfer 2" << std::endl;
             status = agent.postXferReq (treq);
             nixl_exit_on_failure(status, "Failed to post Xfer Req", role);
-            POP_RANGE
 
             std::cout << "Waiting for completion\n";
             while (status != NIXL_SUCCESS) {

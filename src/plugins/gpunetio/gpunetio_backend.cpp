@@ -156,9 +156,8 @@ nixlDocaEngine::nixlDocaEngine(const nixlBackendInitParams *init_params)
             cudaDeviceGetPCIBusId(pciBusId, DOCA_DEVINFO_IBDEV_NAME_SIZE, item.first),
             "cudaDeviceGetPCIBusId");
 
-        nixlDocaEngineCheckCudaError(
-            cudaDeviceGetByPCIBusId(&cuda_id, pciBusId),
-            "cudaDeviceGetByPCIBusId");
+        nixlDocaEngineCheckCudaError(cudaDeviceGetByPCIBusId(&cuda_id, pciBusId),
+                                     "cudaDeviceGetByPCIBusId");
 
         /* Initialize default CUDA context implicitely via CUDA RT API */
         cudaSetDevice(cuda_id);
@@ -478,7 +477,7 @@ nixlDocaEngine::progressThreadStart() {
     int result;
     noSyncIters = 32;
 
-    pthrStop = (volatile uint32_t *) calloc(1, sizeof(uint32_t));
+    pthrStop = (volatile uint32_t *)calloc(1, sizeof(uint32_t));
     *pthrStop = 0;
     /* Create socket */
 
@@ -555,7 +554,8 @@ nixlDocaEngine::progressThreadStop() {
     std::stringstream ss;
 
     ACCESS_ONCE(*pthrStop) = 1;
-    ss << (int)ipv4_addr[0] << "." << (int)ipv4_addr[1] << "." << (int)ipv4_addr[2] << "." << (int)ipv4_addr[3];
+    ss << (int)ipv4_addr[0] << "." << (int)ipv4_addr[1] << "." << (int)ipv4_addr[2] << "."
+       << (int)ipv4_addr[3];
     std::atomic_thread_fence(std::memory_order_seq_cst);
     oob_connection_client_setup(ss.str().c_str(), &fake_sock_fd);
     // pthr.join();
@@ -575,14 +575,14 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
 
     std::lock_guard<std::mutex> lock(qpLock);
 
-    NIXL_INFO << "addRdmaQp for " << remote_agent << std::endl;
+    NIXL_DEBUG << "addRdmaQp for " << remote_agent << std::endl;
 
     // if client or server already created this QP, no need to re-create
     if (qpMap.find(remote_agent) != qpMap.end()) {
         return NIXL_IN_PROG;
     }
 
-    NIXL_INFO << "DOCA addRdmaQp for remote " << remote_agent << std::endl;
+    NIXL_DEBUG << "DOCA addRdmaQp for remote " << remote_agent << std::endl;
 
     rdma_qp = new struct nixlDocaRdmaQp;
 
@@ -603,8 +603,6 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
 
     rdma_qp->qpn_data = doca_verbs_qp_get_qpn(rdma_qp->qp_data->get_qp());
 
-    NIXL_INFO << "doca_gpu_verbs_get_qp_dev rdma_qp->qpn_data " << rdma_qp->qpn_data << std::endl;
-
     /* NOTIF QP */
     try {
         rdma_qp->qp_notif =
@@ -623,11 +621,9 @@ nixlDocaEngine::addRdmaQp(const std::string &remote_agent) {
 
     rdma_qp->qpn_notif = doca_verbs_qp_get_qpn(rdma_qp->qp_notif->get_qp());
 
-    NIXL_INFO << "doca_gpu_verbs_get_qp_dev rdma_qp->qpn_notif " << rdma_qp->qpn_notif << std::endl;
-
     qpMap[remote_agent] = rdma_qp;
 
-    NIXL_INFO << "DOCA addRdmaQp new QP added for " << remote_agent;
+    NIXL_DEBUG << "DOCA addRdmaQp new QP added for " << remote_agent;
 
     return NIXL_SUCCESS;
 }
@@ -660,7 +656,7 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
     }
 
     if (send(oob_sock_client, &lid, sizeof(uint32_t), 0) < 0) {
-        NIXL_ERROR << "Failed to send local GID address";
+        NIXL_ERROR << "Failed to send LID address";
         result = DOCA_ERROR_CONNECTION_ABORTED;
         return NIXL_ERR_BACKEND;
     }
@@ -725,7 +721,7 @@ nixlDocaEngine::connectClientRdmaQp(int oob_sock_client, const std::string &remo
 
 sync:
     connectLock.unlock();
-    NIXL_DEBUG << "Client recv lack" ;
+    NIXL_DEBUG << "Client recv lack";
     if (recv(oob_sock_client, &lack, sizeof(uint32_t), 0) < 0) {
         NIXL_ERROR << "Failed to receive remote ACK connection";
         result = DOCA_ERROR_CONNECTION_ABORTED;
@@ -1079,9 +1075,9 @@ nixlDocaEngine::loadRemoteMD(const nixlBlobDesc &input,
     while (std::getline(ss, token, info_delimiter))
         tokens.push_back(token);
 
-    uint32_t rkey = (uint32_t)atoi(tokens[0].c_str());
-    uintptr_t addr = (uintptr_t)atol(tokens[1].c_str());
-    size_t tot_size = (size_t)atol(tokens[2].c_str());
+    uint32_t rkey = static_cast<uint32_t>(atoi(tokens[0].c_str()));
+    uintptr_t addr = static_cast<uintptr_t>(atol(tokens[1].c_str()));
+    size_t tot_size = static_cast<size_t>(atol(tokens[2].c_str()));
 
     // Empty mmap, filled with imported data
     try {

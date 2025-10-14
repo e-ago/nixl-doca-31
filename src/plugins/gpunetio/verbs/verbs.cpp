@@ -95,6 +95,7 @@ cq::createCq() {
     doca_verbs_cq *new_cq = nullptr;
     struct mlx5_cqe64 *cq_ring_haddr = nullptr;
     uint32_t external_umem_size = 0;
+    external_uar = nullptr;
 
     status = doca_verbs_cq_attr_create(&verbs_cq_attr);
     if (status != DOCA_SUCCESS)
@@ -206,26 +207,29 @@ cq::destroyCq() {
     status = doca_verbs_cq_destroy(cq_verbs);
     if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy doca verbs CQ";
 
+    if (external_uar != nullptr) {
+        status = doca_uar_destroy(external_uar);
+        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu external_uar";
+    }
+
     if (cq_umem != nullptr) {
         status = doca_umem_destroy(cq_umem);
-        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu rq cq ring buffer umem";
+        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu cq_umem";
     }
 
     if (cq_umem_gpu_ptr != 0) {
         status = doca_gpu_mem_free(gpu_dev, cq_umem_gpu_ptr);
-        if (status != DOCA_SUCCESS)
-            NIXL_ERROR << "Failed to destroy gpu memory of rq cq ring buffer";
+        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu memory of cq_umem_gpu_ptr";
     }
 
     if (cq_umem_dbr != nullptr) {
         status = doca_umem_destroy(cq_umem_dbr);
-        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu rq cq ring buffer umem";
+        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu cq_umem_dbr";
     }
 
     if (cq_umem_dbr_gpu_ptr != 0) {
         status = doca_gpu_mem_free(gpu_dev, cq_umem_dbr_gpu_ptr);
-        if (status != DOCA_SUCCESS)
-            NIXL_ERROR << "Failed to destroy gpu memory of rq cq umem dbr buffer";
+        if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu cq_umem_dbr_gpu_ptr";
     }
 }
 
@@ -293,7 +297,7 @@ qp::createQp() {
     if (status != DOCA_SUCCESS) throw std::runtime_error("Failed to doca_uar_create NC DEDICATED");
 
     status = doca_verbs_qp_init_attr_set_external_uar(verbs_qp_init_attr, external_uar);
-    if (status != DOCA_SUCCESS) throw std::runtime_error("Failed to set receive_max_sges");
+    if (status != DOCA_SUCCESS) throw std::runtime_error("Failed to set external_uar");
 
     external_umem_size = calc_qp_external_umem_size(rq_nwqe, sq_nwqe);
 
@@ -388,7 +392,7 @@ qp::destroyQp() {
         status = doca_umem_destroy(qp_umem);
         if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu qp umem";
     }
-    
+
     if (qp_umem_gpu_ptr != 0) {
         status = doca_gpu_mem_free(gpu_dev, qp_umem_gpu_ptr);
         if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu memory of qp ring buffer";
@@ -398,7 +402,7 @@ qp::destroyQp() {
         status = doca_umem_destroy(qp_umem_dbr);
         if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu qp umem dbr";
     }
-    
+
     if (qp_umem_dbr_gpu_ptr != 0) {
         status = doca_gpu_mem_free(gpu_dev, qp_umem_dbr_gpu_ptr);
         if (status != DOCA_SUCCESS) NIXL_ERROR << "Failed to destroy gpu memory of qp dbr";
