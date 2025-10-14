@@ -102,7 +102,7 @@ fi
 
 # GPUNETIO tests
 if $HAS_GPU ; then
-    for op_type in WRITE READ; do
+    for op_type in WRITE; do
         # for initiator in $seg_types; do
             # for target in $seg_types; do
                 run_nixlbench_two_workers --backend GPUNETIO --device_list=mlx5_0 --gpunetio_oob_list=lo --op_type $op_type --initiator_seg_type "DRAM" --target_seg_type "DRAM"
@@ -112,7 +112,7 @@ if $HAS_GPU ; then
 fi
 
 if $HAS_GPU ; then
-    for op_type in WRITE READ; do
+    for op_type in WRITE; do
         # for initiator in $seg_types; do
             # for target in $seg_types; do
                 run_nixlbench_two_workers --backend GPUNETIO --device_list=mlx5_0 --gpunetio_oob_list=lo --op_type $op_type --initiator_seg_type "VRAM" --target_seg_type "VRAM"
