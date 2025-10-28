@@ -633,7 +633,16 @@ xferBenchNixlWorker::cleanupBasicDescVram(xferBenchIOV &iov) {
         CHECK_CUDA_DRIVER_ERROR(cuMemAddressFree(iov.addr, iov.padded_size),
                                 "Failed to free reserved address");
     } else {
-        CHECK_CUDA_ERROR(cudaFree((void *)iov.addr), "Failed to deallocate CUDA buffer");
+        /*
+         * CUDA streams allow for concurrent execution of kernels and memory operations. However,
+         * memory management functions like cudaFree are implicitly synchronized with all streams to
+         * guarantee safety. This means cudaFree will wait for all kernels (in any stream) that
+         * might use the memory to finish before actually freeing it.
+         * If your application hangs on cudaFree due to kernels running in other streams, switching
+         * to cudaFreeAsync can allow the host to proceed without waiting, provided you use
+         * stream-ordered allocations and ensure no use-after-free occurs in other streams.
+         */
+        CHECK_CUDA_ERROR(cudaFreeAsync((void *)iov.addr, 0), "Failed to deallocate CUDA buffer");
     }
 }
 #endif /* HAVE_CUDA */
