@@ -27,6 +27,7 @@ public:
     std::mutex notifLock;
     std::mutex qpLock;
     std::mutex connectLock;
+    int cuda_id;
     std::vector<std::pair<uint32_t, doca_gpu *>> gdevs; /* List of DOCA GPUNetIO device handlers */
     doca_dev *ddev; /* DOCA device handler associated to queues */
     doca_verbs_context *verbs_context; /* DOCA Verbs Context */

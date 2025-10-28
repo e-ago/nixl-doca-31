@@ -149,7 +149,6 @@ nixlDocaEngine::nixlDocaEngine(const nixlBackendInitParams *init_params)
         }
     }
 
-    int cuda_id;
     char pciBusId[DOCA_DEVINFO_IBDEV_NAME_SIZE];
     for (auto &item : gdevs) {
         nixlDocaEngineCheckCudaError(

@@ -362,6 +362,9 @@ threadProgressFunc(void *arg) {
     std::string remote_agent;
 
     nixlDocaEngine *eng = (nixlDocaEngine *)arg;
+    //ok only in case of single GPU device
+    cudaSetDevice(eng->cuda_id);
+    cudaFree(0);
     while (ACCESS_ONCE(*eng->pthrStop) == 0) {
         /* Accept an incoming connection: */
         client_size = sizeof(client_addr);
