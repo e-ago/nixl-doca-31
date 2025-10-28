@@ -643,6 +643,7 @@ xferBenchNixlWorker::cleanupBasicDescVram(xferBenchIOV &iov) {
          * stream-ordered allocations and ensure no use-after-free occurs in other streams.
          */
         CHECK_CUDA_ERROR(cudaFreeAsync((void *)iov.addr, 0), "Failed to deallocate CUDA buffer");
+        CHECK_CUDA_ERROR(cudaStreamSynchronize(0), "Failed to synchronize stream 0");
     }
 }
 #endif /* HAVE_CUDA */
