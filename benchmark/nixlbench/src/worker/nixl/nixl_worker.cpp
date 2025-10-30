@@ -639,7 +639,8 @@ xferBenchNixlWorker::cleanupBasicDescVram(xferBenchIOV &iov) {
          * guarantee safety. This means cudaFree will wait for all kernels (in any stream) that
          * might use the memory to finish before actually freeing it.
          * If the application hangs on cudaFree due to kernels running in other streams, switching
-         * to cudaFreeAsync can allow the host to proceed without waiting for the entire device synchronization.
+         * to cudaFreeAsync can allow the host to proceed without waiting for the entire device
+         * synchronization.
          */
         CHECK_CUDA_ERROR(cudaFreeAsync((void *)iov.addr, 0), "Failed to deallocate CUDA buffer");
         CHECK_CUDA_ERROR(cudaStreamSynchronize(0), "Failed to synchronize stream 0");
