@@ -79,6 +79,16 @@ run_nixlbench_two_workers() {
     wait $pid
 }
 
+run_nixlbench_two_write_bw() {
+    benchmark_group=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    ib_write_bw --use_cuda=0 &
+    pid=$!
+    sleep 1
+    ib_write_bw --use_cuda=0 192.168.1.63
+    wait $pid
+}
+
+
 if $HAS_GPU ; then
     seg_types="VRAM DRAM"
 else
@@ -86,18 +96,22 @@ else
     echo "Worker without GPU, skipping VRAM tests"
 fi
 
-for op_type in READ WRITE; do
-    for initiator in $seg_types; do
-        for target in $seg_types; do
-            run_nixlbench_two_workers --backend UCX --op_type $op_type --initiator_seg_type $initiator --target_seg_type $target
+ls /dev/mlx5_*
+
+ibv_devinfo
+
+dmesg | grep -e DMAR -e IOMMU
+
+run_nixlbench_two_write_bw
+
+if $HAS_GPU ; then
+    for op_type in WRITE READ; do
+        for initiator in $seg_types; do
+            for target in $seg_types; do
+                run_nixlbench_two_workers --backend GPUNETIO --device_list=mlx5_0 --gpunetio_oob_list=br0 --op_type $op_type --initiator_seg_type $initiator --target_seg_type $target
+            done
         done
     done
-done
-
-for op_type in READ WRITE; do
-    for target in $seg_types; do
-        run_nixlbench_one_worker --backend POSIX --op_type $op_type --target_seg_type $target
-    done
-done
+fi
 
 pkill etcd

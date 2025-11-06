@@ -127,6 +127,7 @@ kernel_read(doca_gpu_dev_verbs_qp *qp, struct docaXferReqGpu *xferReqRing, uint3
                                             (uint64_t)(xferReqRing[pos].lbuf[idx]),
                                             xferReqRing[pos].lkey[idx],
                                             xferReqRing[pos].size[idx]);
+        wqe_ptr->rw_rseg.reserved = 0;
     }
     __syncthreads();
 
@@ -147,7 +148,12 @@ kernel_read(doca_gpu_dev_verbs_qp *qp, struct docaXferReqGpu *xferReqRing, uint3
         doca_gpu_dev_verbs_submit(qp, wqe_idx + 1);
         // Wait for final CQE in block of iterations
         if (doca_gpu_dev_verbs_poll_cq_at(doca_gpu_dev_verbs_qp_get_cq_sq(qp), wqe_idx) != 0)
-            printf("kernel_read: Error CQE!\n");
+            printf("kernel_read: Error CQE! rbuf %lx rkey %x lbuf %lx lkey %x size %d\n",
+                    (uint64_t)(xferReqRing[pos].rbuf[idx]),
+                    xferReqRing[pos].rkey[idx],
+                    (uint64_t)(xferReqRing[pos].lbuf[idx]),
+                    xferReqRing[pos].lkey[idx],
+                    xferReqRing[pos].size[idx]);
 
         DOCA_GPUNETIO_VOLATILE(xferReqRing[pos].last_wqe) = wqe_idx;
         doca_gpu_dev_verbs_fence_release<DOCA_GPUNETIO_VERBS_SYNC_SCOPE_GPU>();
@@ -167,14 +173,13 @@ __global__ void
 kernel_write(doca_gpu_dev_verbs_qp *qp, struct docaXferReqGpu *xferReqRing, uint32_t pos) {
     uint64_t wqe_idx = 0;
     doca_gpu_dev_verbs_wqe *wqe_ptr;
-    enum doca_gpu_dev_verbs_wqe_ctrl_flags cflag = DOCA_GPUNETIO_MLX5_WQE_CTRL_CQ_UPDATE;
-    uint32_t tot_wqe, idx = 0;
+    uint64_t tot_wqe, idx = 0;
     __shared__ uint64_t base_wqe_idx;
 
     // Warmup
     if (xferReqRing == nullptr) return;
 
-    tot_wqe = xferReqRing[pos].num;
+    tot_wqe = (uint64_t)xferReqRing[pos].num;
 
     if (threadIdx.x == 0) base_wqe_idx = doca_gpu_dev_verbs_reserve_wq_slots(qp, tot_wqe);
     __syncthreads();
@@ -195,21 +200,23 @@ kernel_write(doca_gpu_dev_verbs_qp *qp, struct docaXferReqGpu *xferReqRing, uint
                                              wqe_ptr,
                                              wqe_idx,
                                              MLX5_OPCODE_RDMA_WRITE,
-                                             cflag,
+                                             DOCA_GPUNETIO_MLX5_WQE_CTRL_CQ_UPDATE,
                                              0,
                                              (uint64_t)(xferReqRing[pos].rbuf[idx]),
                                              xferReqRing[pos].rkey[idx],
                                              (uint64_t)(xferReqRing[pos].lbuf[idx]),
                                              xferReqRing[pos].lkey[idx],
                                              xferReqRing[pos].size[idx]);
+        wqe_ptr->rw_rseg.reserved = 0;
     }
     __syncthreads();
 
-    if ((idx - blockDim.x) == (tot_wqe - 1)) {
-        doca_gpu_dev_verbs_mark_wqes_ready(qp, base_wqe_idx, wqe_idx);
-        doca_gpu_dev_verbs_submit(qp, wqe_idx + 1);
+    if (threadIdx.x == 0) {
+        printf("ring base_wqe_idx %ld tot_wqe %ld DOCA_GPUNETIO_MLX5_WQE_CTRL_CQ_UPDATE %x\n", base_wqe_idx, tot_wqe, DOCA_GPUNETIO_MLX5_WQE_CTRL_CQ_UPDATE);
+        doca_gpu_dev_verbs_mark_wqes_ready(qp, base_wqe_idx, base_wqe_idx + tot_wqe - 1);
+        doca_gpu_dev_verbs_submit(qp, base_wqe_idx + tot_wqe);
 
-        DOCA_GPUNETIO_VOLATILE(xferReqRing[pos].last_wqe) = wqe_idx;
+        DOCA_GPUNETIO_VOLATILE(xferReqRing[pos].last_wqe) = base_wqe_idx + tot_wqe - 1;
         doca_gpu_dev_verbs_fence_release<DOCA_GPUNETIO_VERBS_SYNC_SCOPE_GPU>();
         DOCA_GPUNETIO_VOLATILE(xferReqRing[pos].in_use) = 1;
     }

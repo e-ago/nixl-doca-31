@@ -124,6 +124,8 @@ cq::createCq() {
         throw std::runtime_error("Failed to alloc gpu memory for external umem cq");
     }
 
+    cudaMemset(cq_umem_gpu_ptr, 0, external_umem_size);
+
     cq_ring_haddr = (struct mlx5_cqe64 *)(calloc(external_umem_size, sizeof(uint8_t)));
     if (cq_ring_haddr == nullptr) {
         destroyCq();
@@ -310,6 +312,8 @@ qp::createQp() {
     if (status != DOCA_SUCCESS)
         throw std::runtime_error("Failed to alloc gpu memory for external umem qp");
 
+    cudaMemset(qp_umem_gpu_ptr, 0, external_umem_size);
+
     status = doca_umem_gpu_create(gpu_dev,
                                   dev,
                                   qp_umem_gpu_ptr,
@@ -331,6 +335,8 @@ qp::createQp() {
                                 nullptr);
     if (status != DOCA_SUCCESS)
         throw std::runtime_error("Failed to alloc gpu memory for external umem qp");
+
+    cudaMemset(qp_umem_dbr_gpu_ptr, 0, dbr_umem_align_sz);
 
     status = doca_umem_gpu_create(gpu_dev,
                                   dev,
@@ -465,6 +471,8 @@ mr::mr(doca_gpu *gpu_dev_, void *addr_, uint32_t elem_num_, size_t elem_size_, s
 
     lkey = htobe32(ibmr->lkey);
     rkey = htobe32(ibmr->rkey);
+
+    printf("registered local mr addr %p size %d lkey %x rkey %x\n", addr, (int)tot_size, lkey, rkey);
 }
 
 mr::mr(void *addr_, size_t tot_size_, uint32_t rkey_)
@@ -473,6 +481,8 @@ mr::mr(void *addr_, size_t tot_size_, uint32_t rkey_)
       rkey(rkey_) {
     remote = true;
     ibmr = nullptr;
+
+    printf("registered remote mr addr %p size %d rkey %x\n", addr, (int)tot_size, rkey);
 }
 
 mr::~mr() {
