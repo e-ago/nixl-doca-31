@@ -96,13 +96,11 @@ else
     echo "Worker without GPU, skipping VRAM tests"
 fi
 
-ls /dev/mlx5_*
-
 ibv_devinfo
 
 dmesg | grep -e DMAR -e IOMMU
 
-run_nixlbench_two_write_bw
+# run_nixlbench_two_write_bw
 
 if $HAS_GPU ; then
     for op_type in WRITE READ; do

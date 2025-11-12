@@ -250,7 +250,7 @@ kernel_progress(struct docaXferCompletion *completion_list,
                 if (DOCA_GPUNETIO_VOLATILE(completion_list[index].completed) == 0 &&
                     DOCA_GPUNETIO_VOLATILE(completion_list[index].xferReqRingGpu->in_use) == 1) {
                     // Wait for final CQE in block of iterations
-                    int poll_status = nixl_gpunetio_dev_poll_one_cq_at<
+                    int poll_status = doca_gpu_dev_verbs_poll_one_cq_at<
                         DOCA_GPUNETIO_VERBS_RESOURCE_SHARING_MODE_GPU,
                         DOCA_GPUNETIO_VERBS_QP_SQ>(
                         doca_gpu_dev_verbs_qp_get_cq_sq(

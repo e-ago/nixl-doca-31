@@ -61,13 +61,14 @@ calc_cq_external_umem_size(uint32_t queue_size) {
     return align_up_uint32(cqe_buf_size + VERBS_TEST_DBR_SIZE, get_page_size());
 }
 
+/*
 static void
 mlx5_init_cqes(struct mlx5_cqe64 *cqes, uint32_t nb_cqes) {
     for (uint32_t cqe_idx = 0; cqe_idx < nb_cqes; cqe_idx++)
         cqes[cqe_idx].op_own =
             (MLX5_CQE_INVALID << DOCA_GPUNETIO_VERBS_MLX5_CQE_OPCODE_SHIFT) | MLX5_CQE_OWNER_MASK;
 }
-
+*/
 namespace nixl::doca::verbs {
 
 cq::cq(doca_gpu *gpu_dev_,
@@ -133,7 +134,7 @@ cq::createCq() {
             "Failed to allocate cq host ring buffer memory for initialization");
     }
 
-    mlx5_init_cqes(cq_ring_haddr, ncqe);
+    // mlx5_init_cqes(cq_ring_haddr, ncqe);
 
     status_cuda =
         cudaMemcpy(cq_umem_gpu_ptr, (void *)(cq_ring_haddr), external_umem_size, cudaMemcpyDefault);
